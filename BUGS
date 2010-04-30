@@ -1,0 +1,30 @@
+==========
+   Bugs 
+==========
+
+* The base url is assumed to be "/".
+
+* Slow "code" pages::
+
+    select stats
+    1) 0.102
+
+    select revs
+    2) 2.251
+
+    select changes
+    3) 12.224
+
+    select authors
+    4) 17.281
+
+    select recent
+    5) 17.222
+
+
+    ---
+
+    revisions = []
+    changes = []
+    - 9.406 secs
+

@@ -1,0 +1,66 @@
+==========
+   TODO
+==========
+
+Some various ideas for improving tracstats (in no particular order):
+
+* Select by author, path, file extension, etc.
+* Most edited files, directories, projects, etc.
+* Active users by revisions, by changes, by frequency, etc.
+* Commits - total, first, last, average-per-day, etc.
+* Graphs by day-of-week, by hour-of-day, etc.
+* Percent of codebase modified
+* Percent of paths modified
+* Lines of code changed - average, top 10, etc.
+* Ticket duration (open to close) -- worst, best, average, etc.
+* Ticket response time (open to first response) -- same...
+
+Perhaps we should separate into sections:
+
+* Project Summary
+* Developer Leaderboard
+* Developer Profile
+* Codebase Statistics
+* Wiki Statistics
+* Tickets Statistics
+* Recent Activity
+
+Main page::
+
+    Total # of authors
+    Total revisions
+    Total pages
+    Total tickets
+
+    [X] Code [X] Wiki [X] Tickets
+
+    [ Code Changes ]  [ Wiki Changes ]  [Ticket Changes ]
+
+    Latest commits
+      #120234 "Something is changed..." committed "2 hours ago" by "username"
+
+    Latest wiki changes
+      "WikiPage" changed "4 hours ago" by "username"
+
+    Latest tickets reported
+      #34234 "Something is broken" reported "14 hours ago" by "username"
+
+Tickets::
+
+    Open
+    Critical
+    New
+    Unassigned
+    All bugs ever reported
+
+Detect languages used (perhaps just file extensions)::
+
+    Languages: Python, C, Assembly
+
+Performance::
+
+    time sqlite3 trac.db "select rev, path, change_type, author from node_change join revision using (rev)" > ~/foo
+    time sqlite3 trac.db "select rev, path, change_type from node_change" > ~/foo
+    time sqlite3 trac.db "select rev, path, change_type from node_change left join revision rev using (rev)" > ~/foo
+    time sqlite3 trac.db "select rev, path, change_type from node_change" > ~/foo
+
