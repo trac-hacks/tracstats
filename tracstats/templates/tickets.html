@@ -1,0 +1,191 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:i18n="http://genshi.edgewall.org/i18n"
+      xmlns:xi="http://www.w3.org/2001/XInclude">
+  <xi:include href="layout.html" />
+
+  <head>
+      <title>Ticket Stats <py:if test="author">(${author})</py:if></title>
+  </head>
+
+<body>
+<div id="content" class="wiki">
+
+<h1>Statistics - Tickets</h1>
+
+<table>
+<py:if test="author">
+<tr><td width="150">Author</td><td align="right">${author}</td></tr>
+</py:if>
+<tr><td width="150">First ticket</td><td align="right">${mintime}</td></tr>
+<tr><td width="150">Last ticket</td><td align="right">${maxtime}</td></tr>
+<tr><td width="150">Ticket age</td><td align="right">${age}</td></tr>
+<tr><td width="150">Reporters</td><td align="right">${reporters}</td></tr>
+<tr><td width="150">Tickets</td><td align="right">${total}</td></tr>
+<tr><td width="150">Tickets-per-year</td><td align="right">${peryear}</td></tr>
+<tr><td width="150">Tickets-per-month</td><td align="right">${permonth}</td></tr>
+<tr><td width="150">Tickets-per-day</td><td align="right">${perday}</td></tr>
+<tr><td width="150">Tickets-per-hour</td><td align="right">${perhour}</td></tr>
+</table>
+
+<py:if test="history">
+<br />
+
+<h2>Open Tickets</h2>
+
+<div id="opentickets" style="width:600px;height:300px;"></div>
+
+<script language="javascript" type="text/javascript">
+$(function () {
+    
+    var options = {
+        lines: { show: true, fill: true }, 
+        xaxis: { mode: "time", timeformat: "%b %y" },
+        colors: [ "#afd8f8", "#cb4b4b" ],
+    };
+
+
+    var d1 = [<py:for each="stat in history">[${stat.x}, ${stat.opened}]<py:if
+                      test="stat != history[-1]">,</py:if></py:for>];
+
+    var d2 = [<py:for each="stat in history">[${stat.x}, ${stat.assigned}]<py:if
+                      test="stat != history[-1]">,</py:if></py:for>];
+
+    $.plot($("#opentickets"), [ d1, d2 ], options);
+});
+</script>
+</py:if>
+
+<br />
+
+<h2>Tickets by author</h2>
+
+<table id="ticketsbyauthor" class="tablesorter">
+<thead>
+<tr>
+    <th>Author</th>
+    <th>Reports</th>
+    <th>Changes</th>
+</tr>
+</thead>
+<tbody>
+<py:for each="stat in byauthor">
+<tr>
+    <td width="150"><a href="${stat.url}">${stat.name}</a></td>
+    <td width="100" align="right">${stat.reports}</td>
+    <td width="100" align="right">${stat.changes}</td>
+</tr>
+</py:for>
+</tbody>
+</table>
+
+<script language="javascript" type="text/javascript">
+$(document).ready(function()
+    {   
+        $("#ticketsbyauthor").tablesorter( {sortList: [[1,1]]} );
+    }
+);
+</script>
+
+<br />
+
+<h2>Tickets by component</h2>
+
+<table id="ticketsbycomponent" class="tablesorter">
+<thead>
+<tr>
+    <th>Component</th>
+    <th>Open</th>
+    <th>Total</th>
+</tr>
+</thead>
+<tbody>
+<py:for each="stat in bycomponent">
+<tr>
+    <td width="150"><a href="${stat.url}">${stat.name}</a></td>
+    <td width="100" align="right">${stat.open}</td>
+    <td width="100" align="right">${stat.total}</td>
+</tr>
+</py:for>
+</tbody>
+</table>
+
+<script language="javascript" type="text/javascript">
+$(document).ready(function()
+    {
+        $("#ticketsbycomponent").tablesorter( {sortList: [[1,1]]} );
+    }
+);
+</script>
+
+<br />
+
+<h2>Most active tickets</h2>
+
+<table>
+<py:for each="stat in active">
+<tr>
+    <td width="50"><a href="${stat.url}">${stat.id}</a></td>
+    <td width="150"><a href="${stat.url}">${stat.component}</a></td>
+    <td width="350">${stat.name}</td>
+    <td width="75" align="right">${stat.count}</td>
+    <td width="75" align="right">${stat.percent}%</td>
+</tr>
+</py:for>
+</table>
+
+<br />
+
+<h2>Oldest open tickets</h2>
+
+<table>
+<py:for each="stat in oldest">
+<tr>
+    <td width="50"><a href="${stat.url}">${stat.id}</a></td>
+    <td width="150"><a href="${stat.url2}">${stat.component}</a></td>
+    <td width="350">${stat.name}</td>
+    <td width="100" align="right">${stat.time}</td>
+</tr>
+</py:for>
+</table>
+
+<br />
+
+<h2>Latest tickets reported</h2>
+
+<table>
+<py:for each="stat in newest">
+<tr>
+    <td width="50"><a href="${stat.url}">${stat.id}</a></td>
+    <td width="150"><a href="${stat.url2}">${stat.component}</a></td>
+    <td width="350">${stat.name}</td>
+    <td width="100" align="right">${stat.time}</td>
+</tr>
+</py:for>
+</table>
+
+<br />
+
+<h2>Latest tickets changed</h2>
+
+<table>
+<py:for each="stat in recent">
+<tr>
+    <td width="50"><a href="${stat.url}">${stat.id}</a></td>
+    <td width="150"><a href="${stat.url2}">${stat.component}</a></td>
+    <td width="350">${stat.name}</td>
+    <td width="100" align="right">${stat.time}</td>
+</tr>
+</py:for>
+</table>
+
+<br />
+
+</div>
+
+</body>
+</html>
+

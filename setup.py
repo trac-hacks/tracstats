@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 PACKAGE = 'TracStats'
-VERSION = '0.1'
+VERSION = '0.2'
 
 setup(
     name=PACKAGE, version=VERSION,
@@ -15,7 +15,7 @@ setup(
             'htdocs/*.png',
             'htdocs/*.gif',
             'htdocs/*.js',
-            'templates/*.cs'
+            'templates/*.html'
         ]
     },
     entry_points = {

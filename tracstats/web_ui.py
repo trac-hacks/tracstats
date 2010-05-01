@@ -16,17 +16,17 @@ from trac.util.datefmt import pretty_timedelta, to_datetime
 from trac.util.html import html, Markup
 from trac.web import IRequestHandler
 from trac.web.chrome import INavigationContributor, ITemplateProvider
-from trac.web.chrome import add_stylesheet, add_script
+from trac.web.chrome import add_ctxtnav, add_stylesheet, add_script
 
 
 class TracStatsPlugin(Component):
     implements(INavigationContributor, IPermissionRequestor, IRequestHandler, ITemplateProvider)
-    
+
     # IPermissionRequestor methods
-    
+
     def get_permission_actions(self):
         return ['STATS_VIEW']
-    
+
     # INavigationContributor methods
 
     def get_active_navigation_item(self, req):
@@ -42,11 +42,11 @@ class TracStatsPlugin(Component):
     def get_htdocs_dirs(self):
         from pkg_resources import resource_filename
         return [('stats', resource_filename(__name__, 'htdocs'))]
-        
+
     def get_templates_dirs(self):
         from pkg_resources import resource_filename
         return [resource_filename(__name__, 'templates')]
-    
+
     # IRequestHandler methods
 
     def match_request(self, req):
@@ -71,7 +71,8 @@ class TracStatsPlugin(Component):
         else:
             where = ''
 
-        req.hdf['stats.author'] = author
+        data = {}
+        data['author'] = author
 
         db = self.env.get_db_cnx()
         cursor = db.cursor()
@@ -89,27 +90,33 @@ class TracStatsPlugin(Component):
         add_script(req, 'stats/jquery.sparkline.min.js')
         add_script(req, 'stats/excanvas.pack.js')
 
+        # Include context navigation links
+        add_ctxtnav(req, 'Summary', req.href.stats())
+        add_ctxtnav(req, 'Code', req.href.stats('code'))
+        add_ctxtnav(req, 'Wiki', req.href.stats('wiki'))
+        add_ctxtnav(req, 'Tickets', req.href.stats('tickets'))
+
         if path == '/':
-            req.hdf['title'] = 'Stats'
-            return self._process(req, cursor, where)
-        
+            data['title'] = 'Stats'
+            return self._process(req, cursor, where, data)
+
         elif path == '/code':
-            req.hdf['title'] = 'Code' + (author and (' (%s)' % author))
-            return self._process_code(req, cursor, where)
+            data['title'] = 'Code' + (author and (' (%s)' % author))
+            return self._process_code(req, cursor, where, data)
 
         elif path == '/wiki':
-            req.hdf['title'] = 'Wiki ' + (author and (' (%s)' % author))
-            return self._process_wiki(req, cursor, where)
+            data['title'] = 'Wiki ' + (author and (' (%s)' % author))
+            return self._process_wiki(req, cursor, where, data)
 
         elif path == '/tickets':
-            req.hdf['title'] = 'Tickets' + (author and (' (%s)' % author))
-            return self._process_tickets(req, cursor, where)
+            data['title'] = 'Tickets' + (author and (' (%s)' % author))
+            return self._process_tickets(req, cursor, where, data)
 
         else:
             raise ValueError, "unknown path '%s'" % path
 
 
-    def _process(self, req, cursor, where):
+    def _process(self, req, cursor, where, data):
 
         cursor.execute("""
         select count(distinct author), 
@@ -124,10 +131,10 @@ class TracStatsPlugin(Component):
         cursor.execute("select count(distinct id) from ticket")
         tickets, = cursor.fetchall()[0]
 
-        req.hdf['stats.authors'] = authors
-        req.hdf['stats.revisions'] = revisions
-        req.hdf['stats.pages'] = pages
-        req.hdf['stats.tickets'] = tickets
+        data['authors'] = authors
+        data['revisions'] = revisions
+        data['pages'] = pages
+        data['tickets'] = tickets
 
         cursor.execute("select min(time), max(time) from revision")
         mintime, maxtime = cursor.fetchall()[0]
@@ -140,9 +147,9 @@ class TracStatsPlugin(Component):
         years = td.days // 365
         days = (td.days % 365)
         hours = td.seconds // 3600
-        req.hdf['stats.years'] = years
-        req.hdf['stats.days'] = days
-        req.hdf['stats.hours'] = hours
+        data['years'] = years
+        data['days'] = days
+        data['hours'] = hours
 
         now = time.time()
         start = now - (52 * 7 * 24 * 60 * 60)
@@ -167,8 +174,8 @@ class TracStatsPlugin(Component):
             if week < 0:
                 year -= 1
                 week = 52
-        req.hdf['stats.code.weeks'] = list(reversed(stats))
-     
+        data['weeks'] = list(reversed(stats))
+
         now = time.time()
         start = now - (30 * 24 * 60 * 60)
         cursor.execute("""
@@ -185,7 +192,7 @@ class TracStatsPlugin(Component):
         for author, commits in rows:
             stats.append({'name': author, 
                           'url': req.href.stats("code", author=author),})
-        req.hdf['stats.code.byauthors'] = stats
+        data['byauthors'] = stats
 
         cursor.execute("""
         select path 
@@ -208,7 +215,7 @@ class TracStatsPlugin(Component):
         for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
             stats.append({'name': k,
                           'url': req.href.log(k),})
-        req.hdf['stats.code.bypaths'] = stats
+        data['bypaths'] = stats
 
         d = {}
         for path, in rows:
@@ -225,11 +232,11 @@ class TracStatsPlugin(Component):
         for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
             stats.append({'name': k,
                           'url': req.href.log(k),})
-        req.hdf['stats.code.byproject'] = stats
+        data['byproject'] = stats
 
-        return 'stats.cs', None
+        return 'stats.html', data, None
 
-    def _process_code(self, req, cursor, where):
+    def _process_code(self, req, cursor, where, data):
 
         project = req.args.get('project', '')
 
@@ -256,7 +263,7 @@ class TracStatsPlugin(Component):
             select rev
             from revision
             """ + where)
-        
+
         cursor.execute("""
         select min(cast(rev as int)), 
                max(cast(rev as int)), 
@@ -269,16 +276,16 @@ class TracStatsPlugin(Component):
         """)
         minrev, maxrev, mintime, maxtime, commits, developers = cursor.fetchall()[0]
 
-        req.hdf['stats.code.maxrev'] = maxrev
-        req.hdf['stats.code.minrev'] = minrev
+        data['maxrev'] = maxrev
+        data['minrev'] = minrev
         if maxtime:
-            req.hdf['stats.code.maxtime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(maxtime))
+            data['maxtime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(maxtime))
         else:
-            req.hdf['stats.code.maxtime'] = 'N/A'
+            data['maxtime'] = 'N/A'
         if mintime:
-            req.hdf['stats.code.mintime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(mintime))
+            data['mintime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(mintime))
         else:
-            req.hdf['stats.code.mintime'] = 'N/A'
+            data['mintime'] = 'N/A'
 
         if mintime and maxtime:
             age = maxtime - mintime
@@ -288,20 +295,20 @@ class TracStatsPlugin(Component):
         years = td.days // 365
         days = (td.days % 365)
         hours = td.seconds // 3600
-        req.hdf['stats.code.age'] = '%d years, %d days, %d hours' % (years, days, hours)
+        data['age'] = '%d years, %d days, %d hours' % (years, days, hours)
 
-        req.hdf['stats.code.developers'] = developers
-        req.hdf['stats.code.commits'] = commits
+        data['developers'] = developers
+        data['commits'] = commits
         if age:
-            req.hdf['stats.code.commitsperyear'] = '%.2f' % (commits * 365 * 24 * 60 * 60. / age)
-            req.hdf['stats.code.commitspermonth'] = '%.2f' % (commits * 30 * 24 * 60 * 60. / age)
-            req.hdf['stats.code.commitsperday'] = '%.2f' % (commits * 24 * 60 * 60. / age)
-            req.hdf['stats.code.commitsperhour'] = '%.2f' % (commits * 60 * 60. / age)
+            data['commitsperyear'] = '%.2f' % (commits * 365 * 24 * 60 * 60. / age)
+            data['commitspermonth'] = '%.2f' % (commits * 30 * 24 * 60 * 60. / age)
+            data['commitsperday'] = '%.2f' % (commits * 24 * 60 * 60. / age)
+            data['commitsperhour'] = '%.2f' % (commits * 60 * 60. / age)
         else:
-            req.hdf['stats.code.commitsperyear'] = 0
-            req.hdf['stats.code.commitspermonth'] = 0
-            req.hdf['stats.code.commitsperday'] = 0
-            req.hdf['stats.code.commitsperhour'] = 0
+            data['commitsperyear'] = 0
+            data['commitspermonth'] = 0
+            data['commitsperday'] = 0
+            data['commitsperhour'] = 0
 
         cursor.execute("""
         select rev, time, author, length(message) 
@@ -332,11 +339,11 @@ class TracStatsPlugin(Component):
         if revisions:
             avgsize = sum(int(msg) for _, _, _, msg in revisions) / float(len(revisions))
             avgchanges = float(len(changes)) / len(revisions)
-            req.hdf['stats.code.logentry'] = '%d chars' % avgsize
-            req.hdf['stats.code.changes'] = '%.2f' % avgchanges
+            data['logentry'] = '%d chars' % avgsize
+            data['changes'] = '%.2f' % avgchanges
         else:
-            req.hdf['stats.code.logentry'] = 'N/A'
-            req.hdf['stats.code.changes'] = 'N/A'
+            data['logentry'] = 'N/A'
+            data['changes'] = 'N/A'
 
         cursor.execute("""
         select r.author, 
@@ -395,7 +402,7 @@ class TracStatsPlugin(Component):
                           'changes': change,
                           'paths': paths,
                           'weeks': list(reversed(weeks)),})
-        req.hdf['stats.code.byauthors'] = stats
+        data['byauthors'] = stats
 
         cursor.execute("""
         select r.rev, r.time, r.author, r.message 
@@ -412,7 +419,7 @@ class TracStatsPlugin(Component):
                           'url': req.href.changeset(rev),
                           'url2': req.href.stats("code", author=author),
                           'time': pretty_timedelta(to_datetime(t)),})
-        req.hdf['stats.code.recent'] = stats
+        data['recent'] = stats
 
         times = dict((rev, t) for rev, t, _, _ in revisions)
 
@@ -431,7 +438,7 @@ class TracStatsPlugin(Component):
             for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
                 stats.append({'x': k, 
                               'y': v,})
-        req.hdf['stats.code.totalfiles'] = stats
+        data['totalfiles'] = stats
 
         d = {}
         total = 0
@@ -443,7 +450,7 @@ class TracStatsPlugin(Component):
         for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
             stats.append({'x': k, 
                           'y': v,})
-        req.hdf['stats.code.totalcommits'] = stats
+        data['totalcommits'] = stats
 
         times = dict((rev, t) for rev, t, _, _ in revisions)
         d = {}
@@ -456,7 +463,7 @@ class TracStatsPlugin(Component):
         for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
             stats.append({'x': k, 
                           'y': v,})
-        req.hdf['stats.code.totalchanges'] = stats
+        data['totalchanges'] = stats
 
         d = {}
         for rev, path, change_type, _ in changes:
@@ -471,7 +478,7 @@ class TracStatsPlugin(Component):
                           'url': req.href.log(k),
                           'count': v,
                           'percent': '%.2f' % (100 * v / total)})
-        req.hdf['stats.code.byfiles'] = stats
+        data['byfiles'] = stats
 
         d = {}
         for rev, path, change_type, author in changes:
@@ -496,7 +503,7 @@ class TracStatsPlugin(Component):
                           'deletes': deletes,
                           'edits': edits,
                           'moves': moves})
-        req.hdf['stats.code.bychangetypes'] = stats
+        data['bychangetypes'] = stats
 
         d = {}
         for rev, path, change_type, _ in changes:
@@ -514,7 +521,7 @@ class TracStatsPlugin(Component):
                           'url': req.href.log(k),
                           'count': v,
                           'percent': '%.2f' % (100 * v / total)})
-        req.hdf['stats.code.bypaths'] = stats
+        data['bypaths'] = stats
 
         d = {}
         for rev, path, change_type, _ in changes:
@@ -534,7 +541,7 @@ class TracStatsPlugin(Component):
             stats.append({'name': k, 
                           'count': v,
                           'percent': '%.2f' % (100 * v / total)})
-        req.hdf['stats.code.byfiletypes'] = stats
+        data['byfiletypes'] = stats
 
         d = {}
         for rev, path, change_type, _ in changes:
@@ -555,7 +562,7 @@ class TracStatsPlugin(Component):
                           'changes': v[0],
                           'commits': len(v[1]),
                           'paths': len(v[2]),})
-        req.hdf['stats.code.byproject'] = stats
+        data['byproject'] = stats
 
         hours = ['0%d:00' % i for i in range(10)]
         hours += ['%d:00' % i for i in range(10, 24)]
@@ -568,7 +575,7 @@ class TracStatsPlugin(Component):
         for x, y in sorted(d.iteritems()):
             stats.append({'x': x, 
                           'y': y,})
-        req.hdf['stats.code.byhour'] = stats
+        data['byhour'] = stats
 
         days = dict((day, i) for i, day in enumerate(('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')))
         d = dict((i, 0) for i in range(7))
@@ -579,7 +586,7 @@ class TracStatsPlugin(Component):
         for x, y in sorted(d.iteritems()):
             stats.append({'x': x, 
                           'y': y,})
-        req.hdf['stats.code.byday'] = stats
+        data['byday'] = stats
 
         d = {}
         for _, t, _, _ in revisions:
@@ -603,7 +610,7 @@ class TracStatsPlugin(Component):
         for k, v in sorted(d.iteritems()):
             stats.append({'x': int(k * 1000),
                           'y': v})
-        req.hdf['stats.code.bymonth'] = stats
+        data['bymonth'] = stats
 
         cursor.execute("select distinct(author) from revision")
         authors = set(s for s, in cursor.fetchall())
@@ -645,25 +652,25 @@ class TracStatsPlugin(Component):
              index = min(index, len(fonts) - 1)
              stats.append({'word': k,
                            'size': fonts[index]})
-        req.hdf['stats.code.cloud'] = stats
+        data['cloud'] = stats
 
-        return 'code.cs', None
+        return 'code.html', data, None
 
 
-    def _process_wiki(self, req, cursor, where):
+    def _process_wiki(self, req, cursor, where, data):
 
         cursor.execute("select min(time), max(time), count(*), count(distinct author) from wiki " + where)
         mintime, maxtime, edits, editors = cursor.fetchall()[0]
 
-        req.hdf['stats.wiki.editors'] = editors
+        data['editors'] = editors
         if maxtime:
-            req.hdf['stats.wiki.maxtime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(maxtime))
+            data['maxtime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(maxtime))
         else:
-            req.hdf['stats.wiki.maxtime'] = 'N/A'
+            data['maxtime'] = 'N/A'
         if mintime:
-            req.hdf['stats.wiki.mintime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(mintime))
+            data['mintime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(mintime))
         else:
-            req.hdf['stats.wiki.mintime'] = 'N/A'
+            data['mintime'] = 'N/A'
 
         if mintime and maxtime:
             age = maxtime - mintime
@@ -673,19 +680,19 @@ class TracStatsPlugin(Component):
         years = td.days // 365
         days = (td.days % 365)
         hours = td.seconds // 3600
-        req.hdf['stats.wiki.age'] = '%d years, %d days, %d hours' % (years, days, hours)
+        data['age'] = '%d years, %d days, %d hours' % (years, days, hours)
 
-        req.hdf['stats.wiki.edits'] = edits
+        data['edits'] = edits
         if age:
-            req.hdf['stats.wiki.peryear'] = '%.2f' % (edits * 365 * 24 * 60 * 60. / age)
-            req.hdf['stats.wiki.permonth'] = '%.2f' % (edits * 30 * 24 * 60 * 60. / age) 
-            req.hdf['stats.wiki.perday'] = '%.2f' % (edits * 24 * 60 * 60. / age) 
-            req.hdf['stats.wiki.perhour'] = '%.2f' % (edits * 60 * 60. / age) 
+            data['peryear'] = '%.2f' % (edits * 365 * 24 * 60 * 60. / age)
+            data['permonth'] = '%.2f' % (edits * 30 * 24 * 60 * 60. / age) 
+            data['perday'] = '%.2f' % (edits * 24 * 60 * 60. / age) 
+            data['perhour'] = '%.2f' % (edits * 60 * 60. / age) 
         else:
-            req.hdf['stats.wiki.peryear'] = 0
-            req.hdf['stats.wiki.permonth'] = 0
-            req.hdf['stats.wiki.perday'] = 0
-            req.hdf['stats.wiki.perhour'] = 0
+            data['peryear'] = 0
+            data['permonth'] = 0
+            data['perday'] = 0
+            data['perhour'] = 0
 
         cursor.execute("select name, author, count(*) from wiki " + where + " group by 1, 2")
         pages = cursor.fetchall()
@@ -705,7 +712,7 @@ class TracStatsPlugin(Component):
                           'count': v[0],
                           'pages': len(v[1]),
                           'percent': '%.2f' % (100 * v[0] / total)})
-        req.hdf['stats.wiki.byauthor'] = stats
+        data['byauthor'] = stats
 
         cursor.execute("select name, time from wiki " + where + " order by 2 asc")
         history = cursor.fetchall()
@@ -722,7 +729,7 @@ class TracStatsPlugin(Component):
             for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
                 stats.append({'x': k, 
                               'y': v,})
-        req.hdf['stats.wiki.history'] = stats
+        data['history'] = stats
 
         d = {}
         for name, _, count in pages:
@@ -737,7 +744,7 @@ class TracStatsPlugin(Component):
                           'url': req.href.wiki(k),
                           'count': v,
                           'percent': '%.2f' % (100 * v / total)})
-        req.hdf['stats.wiki.pages'] = stats
+        data['pages'] = stats
 
         cursor.execute("select name, length(text) from wiki " + where + " group by 1 having version = max(version) order by 2 desc limit 10")
         rows = cursor.fetchall()
@@ -747,37 +754,37 @@ class TracStatsPlugin(Component):
             stats.append({'name': k, 
                           'url': req.href.wiki(k),
                           'size': v})
-        req.hdf['stats.wiki.largest'] = stats
+        data['largest'] = stats
 
         cursor.execute("select name, version, author, time from wiki " + where + " order by 4 desc limit 10")                   
         rows = cursor.fetchall()
-        stats = []        
+        stats = []
         for name, version, author, t in rows:
             stats.append({'name': name, 
                           'author': author,
                           'url': req.href.wiki(name, version=version),
                           'url2': req.href.stats("wiki", author=author),
                           'time': pretty_timedelta(to_datetime(t)),})
-        
-        req.hdf['stats.wiki.recent'] = stats
 
-        return 'wiki.cs', None
+        data['recent'] = stats
+
+        return 'wiki.html', data, None
 
 
-    def _process_tickets(self, req, cursor, where):
+    def _process_tickets(self, req, cursor, where, data):
 
         cursor.execute("select min(time), max(time), count(*), count(distinct reporter) from ticket " + where.replace('author', 'reporter'))
         mintime, maxtime, tickets, reporters = cursor.fetchall()[0]
 
-        req.hdf['stats.tickets.reporters'] = reporters
+        data['reporters'] = reporters
         if maxtime:
-            req.hdf['stats.tickets.maxtime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(maxtime))
+            data['maxtime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(maxtime))
         else:
-            req.hdf['stats.tickets.maxtime'] = 'N/A'
+            data['maxtime'] = 'N/A'
         if mintime:
-            req.hdf['stats.tickets.mintime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(mintime))
+            data['mintime'] = time.strftime('%a %m/%d/%Y %H:%M:%S %Z', time.localtime(mintime))
         else:
-            req.hdf['stats.tickets.mintime'] = 'N/A'
+            data['mintime'] = 'N/A'
 
         if mintime and maxtime:
             age = maxtime - mintime
@@ -787,19 +794,19 @@ class TracStatsPlugin(Component):
         years = td.days // 365
         days = (td.days % 365)
         hours = td.seconds // 3600
-        req.hdf['stats.tickets.age'] = '%d years, %d days, %d hours' % (years, days, hours)
+        data['age'] = '%d years, %d days, %d hours' % (years, days, hours)
 
-        req.hdf['stats.tickets.total'] = tickets
+        data['total'] = tickets
         if age:
-            req.hdf['stats.tickets.peryear'] = '%.2f' % (tickets * 365 * 24 * 60 * 60. / age)
-            req.hdf['stats.tickets.permonth'] = '%.2f' % (tickets * 30 * 24 * 60 * 60. / age)
-            req.hdf['stats.tickets.perday'] = '%.2f' % (tickets * 24 * 60 * 60. / age)
-            req.hdf['stats.tickets.perhour'] = '%.2f' % (tickets * 60 * 60. / age)
+            data['peryear'] = '%.2f' % (tickets * 365 * 24 * 60 * 60. / age)
+            data['permonth'] = '%.2f' % (tickets * 30 * 24 * 60 * 60. / age)
+            data['perday'] = '%.2f' % (tickets * 24 * 60 * 60. / age)
+            data['perhour'] = '%.2f' % (tickets * 60 * 60. / age)
         else:
-            req.hdf['stats.tickets.peryear'] = 0
-            req.hdf['stats.tickets.permonth'] = 0
-            req.hdf['stats.tickets.perday'] = 0
-            req.hdf['stats.tickets.perhour'] = 0
+            data['peryear'] = 0
+            data['permonth'] = 0
+            data['perday'] = 0
+            data['perhour'] = 0
 
         cursor.execute("""\
         select author, sum(ticket), sum(changes)
@@ -821,7 +828,7 @@ class TracStatsPlugin(Component):
                           'url': req.href.stats("tickets", author=k),
                           'reports': v[0],
                           'changes': v[1]})
-        req.hdf['stats.tickets.byauthor'] = stats
+        data['byauthor'] = stats
 
         cursor.execute("""\
         select t.component, count(distinct t.id), count(distinct open.id)
@@ -837,7 +844,7 @@ class TracStatsPlugin(Component):
                           'url': req.href.query(status=("new", "opened", "resolved"), component=component, order="priority"),
                           'open' : open,
                           'total' : total,})
-        req.hdf['stats.tickets.bycomponent'] = stats
+        data['bycomponent'] = stats
 
         stats = []
         if not req.args.get('author', ''):
@@ -866,7 +873,7 @@ class TracStatsPlugin(Component):
                 stats.append({'x': k, 
                               'opened': v[0],
                               'assigned': v[1],})
-        req.hdf['stats.tickets.history'] = stats
+        data['history'] = stats
 
         cursor.execute("select tc.ticket, t.component, t.summary, count(*) from ticket_change tc join ticket t on t.id = tc.ticket " + where + " group by 1 order by 3 desc limit 10")
         rows = cursor.fetchall()
@@ -880,7 +887,7 @@ class TracStatsPlugin(Component):
                           'url2': req.href.query(component=component, order="priority"),
                           'count': int(v),
                           'percent': '%.2f' % (100 * int(v) / total)})
-        req.hdf['stats.tickets.active'] = stats
+        data['active'] = stats
 
         cursor.execute("select id, component, summary, time from ticket where status != 'closed' order by 4 asc limit 10")
         rows = cursor.fetchall()
@@ -892,7 +899,7 @@ class TracStatsPlugin(Component):
                           'url': req.href.ticket(ticket),
                           'url2': req.href.query(component=component, order="priority"),
                           'time': pretty_timedelta(to_datetime(t)),})
-        req.hdf['stats.tickets.oldest'] = stats
+        data['oldest'] = stats
 
         cursor.execute("select id, component, summary, time from ticket order by 4 desc limit 10")
         rows = cursor.fetchall()
@@ -904,7 +911,7 @@ class TracStatsPlugin(Component):
                           'url': req.href.ticket(ticket),
                           'url2': req.href.query(component=component, order="priority"),
                           'time': pretty_timedelta(to_datetime(t)),})
-        req.hdf['stats.tickets.newest'] = stats
+        data['newest'] = stats
 
         cursor.execute("select tc.ticket, t.component, t.summary, tc.time from ticket_change tc join ticket t on t.id = tc.ticket group by 1 order by 4 desc limit 10")
         rows = cursor.fetchall()
@@ -917,10 +924,10 @@ class TracStatsPlugin(Component):
                           'url2': req.href.query(component=component, order="priority"),
                           'time': pretty_timedelta(to_datetime(t)),})
 
-        req.hdf['stats.tickets.recent'] = stats
+        data['recent'] = stats
 
 
-        return 'tickets.cs', None
+        return 'tickets.html', data, None
 
 
 stopwords = set('''
