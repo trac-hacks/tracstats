@@ -55,12 +55,10 @@ The 'tracstats' plugin can be installed using standard::
 Configuration
 =============
 
-It is configured in the trac.ini file by enabling and configuring:
+It is configured in the trac.ini file by enabling and configuring::
 
-{{{
-[components]
-tracstats.* = enabled
-}}}
+    [components]
+    tracstats.* = enabled
 
 The STATS_VIEW permission is used to control access to the statistics pages.
 
