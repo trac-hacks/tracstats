@@ -98,21 +98,30 @@ class TracStatsPlugin(Component):
 
         if path == '/':
             data['title'] = 'Stats'
-            return self._process(req, cursor, where, data)
+            result = self._process(req, cursor, where, data)
+            cursor.close()
+            return result
 
         elif path == '/code':
             data['title'] = 'Code' + (author and (' (%s)' % author))
-            return self._process_code(req, cursor, where, data)
+            result = self._process_code(req, cursor, where, data)
+            cursor.close()
+            return result
 
         elif path == '/wiki':
             data['title'] = 'Wiki ' + (author and (' (%s)' % author))
-            return self._process_wiki(req, cursor, where, data)
+            result = self._process_wiki(req, cursor, where, data)
+            cursor.close()
+            return result
 
         elif path == '/tickets':
             data['title'] = 'Tickets' + (author and (' (%s)' % author))
-            return self._process_tickets(req, cursor, where, data)
+            result = self._process_tickets(req, cursor, where, data)
+            cursor.close()
+            return result
 
         else:
+            cursor.close()
             raise ValueError, "unknown path '%s'" % path
 
 
@@ -241,9 +250,11 @@ class TracStatsPlugin(Component):
         project = req.args.get('project', '')
 
         cursor.execute("""
-        create temporary table tmp_revision
+        create temporary table if not exists tmp_revision
             ( rev text PRIMARY KEY )
         """)
+
+        cursor.execute("delete from tmp_revision")
 
         if project:
             cursor.execute("""
@@ -265,11 +276,11 @@ class TracStatsPlugin(Component):
             """ + where)
 
         cursor.execute("""
-        select min(cast(rev as int)), 
-               max(cast(rev as int)), 
-               min(time), 
-               max(time), 
-               count(distinct rev), 
+        select min(cast(rev as int)),
+               max(cast(rev as int)),
+               min(time),
+               max(time),
+               count(distinct rev),
                count(distinct author)
         from revision
         inner join tmp_revision using (rev)
