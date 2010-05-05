@@ -52,11 +52,11 @@ $(function () {
     var d1 = [<py:for each="stat in history">[${stat.x}, ${stat.opened}]<py:if
                       test="stat != history[-1]">,</py:if></py:for>];
 
-    var d2 = [<py:for each="stat in history">[${stat.x}, ${stat.assigned}]<py:if
+    var d2 = [<py:for each="stat in history">[${stat.x}, ${stat.accepted}]<py:if
                       test="stat != history[-1]">,</py:if></py:for>];
 
     $.plot($("#opentickets"), [ { data: d1, label: 'Opened' },
-                                { data: d2, label: 'Assigned' } ], options);
+                                { data: d2, label: 'Accepted' } ], options);
 });
 </script>
 </py:if>

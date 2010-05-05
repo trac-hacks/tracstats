@@ -843,9 +843,9 @@ class TracStatsPlugin(Component):
 
         cursor.execute("""\
         select t.component, count(distinct t.id), count(distinct open.id)
-        from ticket t 
+        from ticket t
         join ticket open using (component)
-        where open.resolution is null
+        where open.resolution is null or open.resolution = ""
         group by 1 order by 2 desc
         """)
         rows = cursor.fetchall()
@@ -868,25 +868,32 @@ class TracStatsPlugin(Component):
             rows = cursor.fetchall()
             d = {}
             opened = 0
-            assigned = 0
+            accepted = 0
             for ticket, t, oldvalue, newvalue in sorted(rows, key=itemgetter(1)):
-                if newvalue == 'assigned' and oldvalue != 'assigned':
-                    assigned += 1
-                elif newvalue != 'assigned' and oldvalue == 'assigned':
-                    assigned -= 1
-                if newvalue in ("new", "reopened") and oldvalue not in ("assigned", "new", "reopened"):
+                if newvalue == 'accepted' and oldvalue != 'accepted':
+                    accepted += 1
+                elif newvalue != 'accepted' and oldvalue == 'accepted':
+                    accepted -= 1
+                if newvalue in ("new", "reopened") and oldvalue not in ("new", "reopened"):
                     opened += 1
-                elif newvalue == "closed":
+                elif newvalue == "closed" and oldvalue != "closed":
                     opened -= 1
-                d[int(t * 1000)] = (opened, assigned)
+                d[int(t * 1000)] = (opened, accepted)
             steps = max(len(d) / 10, 1)
             for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
-                stats.append({'x': k, 
+                stats.append({'x': k,
                               'opened': v[0],
-                              'assigned': v[1],})
+                              'accepted': v[1],})
         data['history'] = stats
 
-        cursor.execute("select tc.ticket, t.component, t.summary, count(*) from ticket_change tc join ticket t on t.id = tc.ticket " + where + " group by 1 order by 3 desc limit 10")
+        cursor.execute("""\
+        select tc.ticket, t.component, t.summary, count(*)
+        from ticket_change tc
+        join ticket t on t.id = tc.ticket """ + where + """
+        group by 1
+        order by 3 desc
+        limit 10
+        """)
         rows = cursor.fetchall()
         total = float(sum(int(v) for _, _, _, v in rows))
         stats = []
