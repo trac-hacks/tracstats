@@ -809,8 +809,8 @@ class TracStatsPlugin(Component):
             data['perhour'] = 0
 
         cursor.execute("""\
-        select author, sum(ticket), sum(changes)
-        from (select reporter as author, count(*) as ticket, 0 as changes
+        select author, sum(reports), sum(changes)
+        from (select reporter as author, count(*) as reports, 0 as changes
               from ticket """ + where.replace('author', 'reporter') + """
               group by 1
               union
