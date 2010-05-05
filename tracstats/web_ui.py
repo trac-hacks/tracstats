@@ -814,7 +814,7 @@ class TracStatsPlugin(Component):
               from ticket """ + where.replace('author', 'reporter') + """
               group by 1
               union
-              select author, 0, count(*) 
+              select author, 0 as reports, count(*) as changes
               from ticket_change """ + where + """
               group by 1
               ) as data
