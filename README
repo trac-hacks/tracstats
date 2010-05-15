@@ -43,6 +43,9 @@ Some features include:
 
 * Drill down by author or path within the repository for more information.
 
+The 'tracstats' plugin supports Trac installations with SQLite, MySQL, and
+PostgreSQL database backends.
+
 
 Installation
 ============

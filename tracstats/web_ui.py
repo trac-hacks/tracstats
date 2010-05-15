@@ -79,7 +79,8 @@ class TracStatsPlugin(Component):
 
         db_str = self.env.config.get('trac', 'database')
         db_type, db_path = db_str.split(':', 1)
-        assert db_type in ('sqlite', 'mysql')
+        assert db_type in ('sqlite', 'mysql', 'postgres'), \
+            'Unsupported database "%s"' % db_type
         self.db_type = db_type
 
         # Include trac wiki stylesheet
@@ -167,8 +168,12 @@ class TracStatsPlugin(Component):
 
         if self.db_type == 'sqlite':
             strftime = "strftime('%Y-%W', time, 'unixepoch')"
-        else:
+        elif self.db_type == 'mysql':
             strftime = "date_format(from_unixtime(time), '%Y-%u')"
+        elif self.db_type == 'postgres':
+            strftime = "to_char(to_timestamp(time), 'YYYY-IW')" # FIXME: Not %Y-%W
+        else:
+            assert False
 
         now = time.time()
         start = now - (52 * 7 * 24 * 60 * 60)
@@ -260,14 +265,23 @@ class TracStatsPlugin(Component):
         project = req.args.get('project', '')
 
         if self.db_type == 'sqlite':
-            revtype = "text"
+            cursor.execute("""
+            create temporary table if not exists tmp_revision
+                ( rev text PRIMARY KEY )
+            """)
+        elif self.db_type == 'mysql':
+            cursor.execute("""
+            create temporary table if not exists tmp_revision
+                ( rev varchar(20) PRIMARY KEY )
+            """)
+        elif self.db_type == 'postgres':
+            cursor.execute("""
+            create temporary table tmp_revision
+                ( rev varchar(20) PRIMARY KEY )
+            """)
         else:
-            revtype = "varchar(20)"
+            assert False
 
-        cursor.execute("""
-        create temporary table if not exists tmp_revision
-            ( rev %s PRIMARY KEY )
-        """ % revtype)
         cursor.execute("delete from tmp_revision")
 
         if project:
@@ -289,10 +303,12 @@ class TracStatsPlugin(Component):
             from revision
             """ + where)
 
-        if self.db_type == 'sqlite':
+        if self.db_type in ('sqlite', 'postgres'):
             inttype = 'int'
-        else:
+        elif self.db_type == 'mysql':
             inttype = 'signed'
+        else:
+            assert False
 
         cursor.execute("""
         select min(cast(rev as %s)),
@@ -391,8 +407,12 @@ class TracStatsPlugin(Component):
 
         if self.db_type == 'sqlite':
             strftime = "strftime('%Y-%W', time, 'unixepoch')"
-        else:
+        elif self.db_type == 'mysql':
             strftime = "date_format(from_unixtime(time), '%Y-%u')"
+        elif self.db_type == 'postgres':
+            strftime = "to_char(to_timestamp(time), 'YYYY-IW')" # FIXME: Not %Y-%W
+        else:
+            assert False
 
         now = time.time()
         start = now - (52 * 7 * 24 * 60 * 60)
@@ -784,10 +804,11 @@ class TracStatsPlugin(Component):
         cursor.execute("""
         select name, version, length(text)
         from wiki """ + where + """
-        group by 1
+        group by 1, 2, 3
         having version = max(version)
-        order by 2 desc
-        limit 10""")
+        order by 3 desc
+        limit 10
+        """)
         rows = cursor.fetchall()
         d = dict((name, int(size)) for name, _, size in rows)
         stats = []
@@ -801,7 +822,8 @@ class TracStatsPlugin(Component):
         select name, version, author, time
         from wiki """ + where + """
         order by 4 desc
-        limit 10""")
+        limit 10
+        """)
         rows = cursor.fetchall()
         stats = []
         for name, version, author, t in rows:
@@ -879,7 +901,7 @@ class TracStatsPlugin(Component):
         select t.component, count(distinct t.id), count(distinct open.id)
         from ticket t
         join ticket open using (component)
-        where open.resolution is null or open.resolution = ""
+        where open.resolution is null or length(open.resolution) = 0
         group by 1 order by 2 desc
         """)
         rows = cursor.fetchall()
@@ -894,10 +916,11 @@ class TracStatsPlugin(Component):
         stats = []
         if not req.args.get('author', ''):
             cursor.execute("""\
-            select id, time, "none", "new" as status from ticket
+            select id, time, 'none' as oldvalue, 'new' as newvalue
+            from ticket
             union
-            select ticket, time, oldvalue, newvalue 
-            from ticket_change where field = "status"
+            select ticket, time, oldvalue, newvalue
+            from ticket_change where field = 'status'
             """)
             rows = cursor.fetchall()
             d = {}
@@ -924,7 +947,7 @@ class TracStatsPlugin(Component):
         select tc.ticket, t.component, t.summary, count(*)
         from ticket_change tc
         join ticket t on t.id = tc.ticket """ + where + """
-        group by 1
+        group by 1, 2, 3
         order by 3 desc
         limit 10
         """)
@@ -941,7 +964,13 @@ class TracStatsPlugin(Component):
                           'percent': '%.2f' % (100 * int(v) / total)})
         data['active'] = stats
 
-        cursor.execute("select id, component, summary, time from ticket where status != 'closed' order by 4 asc limit 10")
+        cursor.execute("""
+        select id, component, summary, time
+        from ticket
+        where status != 'closed'
+        order by 4 asc
+        limit 10
+        """)
         rows = cursor.fetchall()
         stats = []
         for ticket, component, summary, t in rows:
@@ -965,7 +994,13 @@ class TracStatsPlugin(Component):
                           'time': pretty_timedelta(to_datetime(t)),})
         data['newest'] = stats
 
-        cursor.execute("select tc.ticket, t.component, t.summary, tc.time from ticket_change tc join ticket t on t.id = tc.ticket group by 1 order by 4 desc limit 10")
+        cursor.execute("""
+        select tc.ticket, t.component, t.summary, tc.time
+        from ticket_change tc
+        join ticket t on t.id = tc.ticket
+        order by 4 desc
+        limit 10
+        """)
         rows = cursor.fetchall()
         stats = []
         for ticket, component, summary, t in rows:
