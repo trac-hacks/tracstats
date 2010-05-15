@@ -77,6 +77,11 @@ class TracStatsPlugin(Component):
         db = self.env.get_db_cnx()
         cursor = db.cursor()
 
+        db_str = self.env.config.get('trac', 'database')
+        db_type, db_path = db_str.split(':', 1)
+        assert db_type in ('sqlite', 'mysql')
+        self.db_type = db_type
+
         # Include trac wiki stylesheet
         add_stylesheet(req, 'common/css/wiki.css')
 
@@ -160,16 +165,21 @@ class TracStatsPlugin(Component):
         data['days'] = days
         data['hours'] = hours
 
+        if self.db_type == 'sqlite':
+            strftime = "strftime('%Y-%W', time, 'unixepoch')"
+        else:
+            strftime = "date_format(from_unixtime(time), '%Y-%u')"
+
         now = time.time()
         start = now - (52 * 7 * 24 * 60 * 60)
         cursor.execute("""
-        select strftime('%%Y-%%W', time, 'unixepoch'), 
-               count(*) 
-        from revision 
-        where time > %d 
+        select %s,
+               count(*)
+        from revision
+        where time > %d
         group by 1 
         order by 1
-        """ % start)
+        """ % (strftime, start))
         rows = cursor.fetchall()
 
         d = dict(rows)
@@ -249,11 +259,15 @@ class TracStatsPlugin(Component):
 
         project = req.args.get('project', '')
 
+        if self.db_type == 'sqlite':
+            revtype = "text"
+        else:
+            revtype = "varchar(20)"
+
         cursor.execute("""
         create temporary table if not exists tmp_revision
-            ( rev text PRIMARY KEY )
-        """)
-
+            ( rev %s PRIMARY KEY )
+        """ % revtype)
         cursor.execute("delete from tmp_revision")
 
         if project:
@@ -275,16 +289,21 @@ class TracStatsPlugin(Component):
             from revision
             """ + where)
 
+        if self.db_type == 'sqlite':
+            inttype = 'int'
+        else:
+            inttype = 'signed'
+
         cursor.execute("""
-        select min(cast(rev as int)),
-               max(cast(rev as int)),
+        select min(cast(rev as %s)),
+               max(cast(rev as %s)),
                min(time),
                max(time),
                count(distinct rev),
                count(distinct author)
         from revision
         inner join tmp_revision using (rev)
-        """)
+        """ % (inttype, inttype))
         minrev, maxrev, mintime, maxtime, commits, developers = cursor.fetchall()[0]
 
         data['maxrev'] = maxrev
@@ -370,18 +389,23 @@ class TracStatsPlugin(Component):
         """)
         details = cursor.fetchall()
 
+        if self.db_type == 'sqlite':
+            strftime = "strftime('%Y-%W', time, 'unixepoch')"
+        else:
+            strftime = "date_format(from_unixtime(time), '%Y-%u')"
+
         now = time.time()
         start = now - (52 * 7 * 24 * 60 * 60)
         cursor.execute("""
         select r.author,
-               strftime('%%Y-%%W', time, 'unixepoch'), 
-               count(r.rev) 
+               %s,
+               count(r.rev)
         from revision r
         inner join tmp_revision tr using (rev)
-        where r.time > %d 
+        where r.time > %d
         group by 1, 2
         order by 1, 2
-        """ % start)
+        """ % (strftime, start))
         rows = cursor.fetchall()
         d = {}
         for author, week, count in rows:
@@ -757,9 +781,15 @@ class TracStatsPlugin(Component):
                           'percent': '%.2f' % (100 * v / total)})
         data['pages'] = stats
 
-        cursor.execute("select name, length(text) from wiki " + where + " group by 1 having version = max(version) order by 2 desc limit 10")
+        cursor.execute("""
+        select name, version, length(text)
+        from wiki """ + where + """
+        group by 1
+        having version = max(version)
+        order by 2 desc
+        limit 10""")
         rows = cursor.fetchall()
-        d = dict((name, int(size)) for name, size in rows)
+        d = dict((name, int(size)) for name, _, size in rows)
         stats = []
         for k, v in sorted(d.items(), key=itemgetter(1), reverse=True):
             stats.append({'name': k, 
@@ -767,7 +797,11 @@ class TracStatsPlugin(Component):
                           'size': v})
         data['largest'] = stats
 
-        cursor.execute("select name, version, author, time from wiki " + where + " order by 4 desc limit 10")                   
+        cursor.execute("""
+        select name, version, author, time
+        from wiki """ + where + """
+        order by 4 desc
+        limit 10""")
         rows = cursor.fetchall()
         stats = []
         for name, version, author, t in rows:
