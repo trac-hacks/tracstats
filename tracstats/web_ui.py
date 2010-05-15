@@ -706,6 +706,8 @@ class TracStatsPlugin(Component):
              index = int(floor(weight * len(fonts)))
              index = min(index, len(fonts) - 1)
              stats.append({'word': k,
+                           'url': req.href.search(q=k, noquickjump=1,
+                                                  changeset="on"),
                            'size': fonts[index]})
         data['cloud'] = stats
 

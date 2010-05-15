@@ -381,7 +381,7 @@ $(document).ready(function()
 
 <div style="width:600px;">
 <py:for each="stat in cloud">
-<span style="font-size: ${stat.size}">${stat.word}</span>
+<a style="font-size: ${stat.size};" href="${stat.url}">${stat.word}</a>&nbsp;
 </py:for>
 </div>
 
