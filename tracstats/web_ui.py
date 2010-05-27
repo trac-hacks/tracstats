@@ -8,6 +8,7 @@ from math import floor, log
 from operator import itemgetter
 
 # trac imports
+import trac
 from trac.core import *
 from trac.mimeview import Mimeview
 from trac.perm import IPermissionRequestor
@@ -17,6 +18,14 @@ from trac.util.html import html, Markup
 from trac.web import IRequestHandler
 from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.web.chrome import add_ctxtnav, add_stylesheet, add_script
+
+# In version 0.12, the time field in the database was changed
+# from seconds to microseconds.  This allows us to support both
+# 0.11 and 0.12 with the same piece of code.  It could be prettier.
+if trac.__version__.startswith('0.12'):
+    SECONDS = 'time / 1000000'
+else:
+    SECONDS = 'time'
 
 
 class TracStatsPlugin(Component):
@@ -151,7 +160,10 @@ class TracStatsPlugin(Component):
         data['pages'] = pages
         data['tickets'] = tickets
 
-        cursor.execute("select min(time), max(time) from revision")
+        cursor.execute("""
+        select min(%s), max(%s)
+        from revision
+        """ % (SECONDS, SECONDS))
         mintime, maxtime = cursor.fetchall()[0]
 
         if mintime and maxtime:
@@ -167,11 +179,11 @@ class TracStatsPlugin(Component):
         data['hours'] = hours
 
         if self.db_type == 'sqlite':
-            strftime = "strftime('%Y-%W', time, 'unixepoch')"
+            strftime = "strftime('%%Y-%%W', %s, 'unixepoch')" % SECONDS
         elif self.db_type == 'mysql':
-            strftime = "date_format(from_unixtime(time), '%Y-%u')"
+            strftime = "date_format(from_unixtime(%s), '%%Y-%%u')" % SECONDS
         elif self.db_type == 'postgres':
-            strftime = "to_char(to_timestamp(time), 'YYYY-IW')" # FIXME: Not %Y-%W
+            strftime = "to_char(to_timestamp(%s), 'YYYY-IW')" % SECONDS # FIXME: Not %Y-%W
         else:
             assert False
 
@@ -181,10 +193,10 @@ class TracStatsPlugin(Component):
         select %s,
                count(*)
         from revision
-        where time > %d
+        where %s > %d
         group by 1 
         order by 1
-        """ % (strftime, start))
+        """ % (strftime, SECONDS, start))
         rows = cursor.fetchall()
 
         d = dict(rows)
@@ -205,11 +217,11 @@ class TracStatsPlugin(Component):
         cursor.execute("""
         select author, count(*) 
         from revision 
-        where time > %d 
+        where %s > %d 
         group by 1 
         order by 2 desc 
         limit 10
-        """ % start)
+        """ % (SECONDS, start))
         rows = cursor.fetchall()
 
         stats = []
@@ -222,8 +234,8 @@ class TracStatsPlugin(Component):
         select path 
         from node_change 
         join revision using (rev) 
-        where time > %d
-        """ % start)
+        where %s > %d
+        """ % (SECONDS, start))
         rows = cursor.fetchall()
 
         d = {}
@@ -313,13 +325,13 @@ class TracStatsPlugin(Component):
         cursor.execute("""
         select min(cast(rev as %s)),
                max(cast(rev as %s)),
-               min(time),
-               max(time),
+               min(%s),
+               max(%s),
                count(distinct rev),
                count(distinct author)
         from revision
         inner join tmp_revision using (rev)
-        """ % (inttype, inttype))
+        """ % (inttype, inttype, SECONDS, SECONDS))
         minrev, maxrev, mintime, maxtime, commits, developers = cursor.fetchall()[0]
 
         data['maxrev'] = maxrev
@@ -357,10 +369,10 @@ class TracStatsPlugin(Component):
             data['commitsperhour'] = 0
 
         cursor.execute("""
-        select rev, time, author, length(message) 
+        select rev, %s, author, length(message) 
         from revision 
         inner join tmp_revision using (rev)
-        """)
+        """ % SECONDS)
         revisions = cursor.fetchall()
         #revisions = []
 
@@ -394,7 +406,7 @@ class TracStatsPlugin(Component):
         cursor.execute("""
         select r.author, 
             count(distinct r.rev) as commits, 
-            count(distinct r.rev) * 24.0 * 60 * 60 / (max(r.time) - min(r.time)) as rate,
+            count(distinct r.rev) * 24.0 * 60 * 60 / (max(r.%s) - min(r.%s)) as rate,
             count(c.path) as changes,
             count(distinct c.path) as paths
         from revision r
@@ -402,15 +414,15 @@ class TracStatsPlugin(Component):
         join node_change c using (rev)
         group by 1
         order by 2 desc
-        """)
+        """ % (SECONDS, SECONDS))
         details = cursor.fetchall()
 
         if self.db_type == 'sqlite':
-            strftime = "strftime('%Y-%W', time, 'unixepoch')"
+            strftime = "strftime('%%Y-%%W', %s, 'unixepoch')" % SECONDS
         elif self.db_type == 'mysql':
-            strftime = "date_format(from_unixtime(time), '%Y-%u')"
+            strftime = "date_format(from_unixtime(%s), '%%Y-%%u')" % SECONDS
         elif self.db_type == 'postgres':
-            strftime = "to_char(to_timestamp(time), 'YYYY-IW')" # FIXME: Not %Y-%W
+            strftime = "to_char(to_timestamp(%s), 'YYYY-IW')" % SECONDS # FIXME: Not %Y-%W
         else:
             assert False
 
@@ -422,10 +434,10 @@ class TracStatsPlugin(Component):
                count(r.rev)
         from revision r
         inner join tmp_revision tr using (rev)
-        where r.time > %d
+        where r.%s > %d
         group by 1, 2
         order by 1, 2
-        """ % (strftime, start))
+        """ % (strftime, SECONDS, start))
         rows = cursor.fetchall()
         d = {}
         for author, week, count in rows:
@@ -460,11 +472,11 @@ class TracStatsPlugin(Component):
         data['byauthors'] = stats
 
         cursor.execute("""
-        select r.rev, r.time, r.author, r.message 
+        select r.rev, r.%s, r.author, r.message 
         from revision r
         inner join tmp_revision tr on tr.rev = r.rev
         order by time desc limit 10
-        """)
+        """ % SECONDS)
         rows = cursor.fetchall()
         stats = []
         for rev, t, author, msg in rows:
@@ -716,7 +728,12 @@ class TracStatsPlugin(Component):
 
     def _process_wiki(self, req, cursor, where, data):
 
-        cursor.execute("select min(time), max(time), count(*), count(distinct author) from wiki " + where)
+        cursor.execute("""
+        select min(%s),
+               max(%s),
+               count(*),
+               count(distinct author) """ % (SECONDS, SECONDS) + """
+        from wiki """ + where)
         mintime, maxtime, edits, editors = cursor.fetchall()[0]
 
         data['editors'] = editors
@@ -771,7 +788,11 @@ class TracStatsPlugin(Component):
                           'percent': '%.2f' % (100 * v[0] / total)})
         data['byauthor'] = stats
 
-        cursor.execute("select name, time from wiki " + where + " order by 2 asc")
+        cursor.execute("""
+        select name, %s """ % SECONDS + """
+        from wiki """ + where + """
+        order by 2 asc
+        """)
         history = cursor.fetchall()
 
         stats = []
@@ -821,7 +842,7 @@ class TracStatsPlugin(Component):
         data['largest'] = stats
 
         cursor.execute("""
-        select name, version, author, time
+        select name, version, author, %s """ % SECONDS + """
         from wiki """ + where + """
         order by 4 desc
         limit 10
@@ -842,7 +863,13 @@ class TracStatsPlugin(Component):
 
     def _process_tickets(self, req, cursor, where, data):
 
-        cursor.execute("select min(time), max(time), count(*), count(distinct reporter) from ticket " + where.replace('author', 'reporter'))
+        cursor.execute("""
+        select
+            min(%s),
+            max(%s),
+            count(*),
+            count(distinct reporter) """ % (SECONDS, SECONDS) + """
+        from ticket """ + where.replace('author', 'reporter'))
         mintime, maxtime, tickets, reporters = cursor.fetchall()[0]
 
         data['reporters'] = reporters
@@ -918,12 +945,12 @@ class TracStatsPlugin(Component):
         stats = []
         if not req.args.get('author', ''):
             cursor.execute("""\
-            select id, time, 'none' as oldvalue, 'new' as newvalue
+            select id, %s, 'none' as oldvalue, 'new' as newvalue
             from ticket
             union
-            select ticket, time, oldvalue, newvalue
+            select ticket, %s, oldvalue, newvalue
             from ticket_change where field = 'status'
-            """)
+            """ % (SECONDS, SECONDS))
             rows = cursor.fetchall()
             d = {}
             opened = 0
@@ -967,12 +994,12 @@ class TracStatsPlugin(Component):
         data['active'] = stats
 
         cursor.execute("""
-        select id, component, summary, time
+        select id, component, summary, %s
         from ticket
         where status != 'closed'
         order by 4 asc
         limit 10
-        """)
+        """ % SECONDS)
         rows = cursor.fetchall()
         stats = []
         for ticket, component, summary, t in rows:
@@ -984,7 +1011,12 @@ class TracStatsPlugin(Component):
                           'time': pretty_timedelta(to_datetime(t)),})
         data['oldest'] = stats
 
-        cursor.execute("select id, component, summary, time from ticket order by 4 desc limit 10")
+        cursor.execute("""
+        select id, component, summary, %s
+        from ticket
+        order by 4 desc
+        limit 10
+        """ % SECONDS)
         rows = cursor.fetchall()
         stats = []
         for ticket, component, summary, t in rows:
@@ -997,12 +1029,12 @@ class TracStatsPlugin(Component):
         data['newest'] = stats
 
         cursor.execute("""
-        select tc.ticket, t.component, t.summary, tc.time
+        select tc.ticket, t.component, t.summary, tc.%s
         from ticket_change tc
         join ticket t on t.id = tc.ticket
         order by 4 desc
         limit 10
-        """)
+        """ % SECONDS)
         rows = cursor.fetchall()
         stats = []
         for ticket, component, summary, t in rows:
