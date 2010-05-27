@@ -258,7 +258,7 @@ class TracStatsPlugin(Component):
             slash = path.find('/')
             if slash < 0:
                 continue
-            project = path[:slash]
+            project = path[:slash] or 'None'
             try:
                 d[project] += 1
             except KeyError:
@@ -615,7 +615,7 @@ class TracStatsPlugin(Component):
             slash = path.find('/')
             if slash < 0:
                 continue
-            project = path[:slash]
+            project = path[:slash] or 'None'
             try:
                 d[project][0] += 1
                 d[project][1].add(rev)
