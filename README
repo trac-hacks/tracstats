@@ -1,14 +1,14 @@
 ===============
-   tracstats
+   TracStats
 ===============
 
 
 Description
 ===========
 
-The 'tracstats' project is a plugin for the 'trac' project management tool.
+The TracStats project is a plugin for the 'trac' project management tool.
 
-The 'tracstats' plugin adds a "Stats" tab to the trac project. Underneath this
+The TracStats plugin adds a "Stats" tab to the trac project. Underneath this
 tab can be found statistics about subversion, wiki, and ticket system.
 
 Some features include:
@@ -43,14 +43,14 @@ Some features include:
 
 * Drill down by author or path within the repository for more information.
 
-The 'tracstats' plugin supports Trac installations with SQLite, MySQL, and
+The TracStats plugin supports Trac installations with SQLite, MySQL, and
 PostgreSQL database backends.
 
 
 Installation
 ============
 
-The 'tracstats' plugin can be installed using standard::
+The TracStats plugin can be installed using standard::
 
     python setup.py install
 
