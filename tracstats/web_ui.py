@@ -405,7 +405,10 @@ class TracStatsPlugin(Component):
             commits = len(set(x[0] for x in revisions if x[2] == author))
             mintime = min(x[1] for x in revisions if x[2] == author)
             maxtime = max(x[1] for x in revisions if x[2] == author)
-            rate = commits * 24.0 * 60 * 60 / (maxtime - mintime)
+            if maxtime > mintime:
+                rate = commits * 24.0 * 60 * 60 / (maxtime - mintime)
+            else:
+                rate = 0
             change = sum(1 for x in changes if x[3] == author)
             paths = len(set(x[1] for x in changes if x[3] == author))
 
