@@ -27,6 +27,15 @@ if trac.__version__.startswith('0.12'):
 else:
     SECONDS = 'time'
 
+# In version 0.12, the database was changed to allow multiple
+# repositories.  Where the "rev" field was previously unique,
+# the "(repos,rev)" fields are now unique.  Doing it this way
+# is a big performance boost.
+if trac.__version__.startswith('0.12'):
+    USING = "on r.repos == nc.repos and r.rev == nc.rev"
+else:
+    USING = "using (rev)"
+
 
 class TracStatsPlugin(Component):
     implements(INavigationContributor, IPermissionRequestor, IRequestHandler, ITemplateProvider)
@@ -230,12 +239,13 @@ class TracStatsPlugin(Component):
                           'url': req.href.stats("code", author=author),})
         data['byauthors'] = stats
 
+
         cursor.execute("""
-        select path 
-        from node_change 
-        join revision using (rev) 
+        select nc.path
+        from node_change nc
+        join revision r %s
         where %s > %d
-        """ % (SECONDS, start))
+        """ % (USING, SECONDS, start))
         rows = cursor.fetchall()
 
         d = {}
@@ -276,63 +286,56 @@ class TracStatsPlugin(Component):
 
         project = req.args.get('project', '')
 
-        if self.db_type == 'sqlite':
-            cursor.execute("""
-            create temporary table if not exists tmp_revision
-                ( rev text PRIMARY KEY )
-            """)
-        elif self.db_type == 'mysql':
-            cursor.execute("""
-            create temporary table if not exists tmp_revision
-                ( rev varchar(20) PRIMARY KEY )
-            """)
-        elif self.db_type == 'postgres':
-            cursor.execute("""
-            create temporary table tmp_revision
-                ( rev varchar(20) PRIMARY KEY )
-            """)
-        else:
-            assert False
-
-        cursor.execute("delete from tmp_revision")
-
         if project:
             cursor.execute("""
-            insert into tmp_revision
-            select rev
+            select rev, %s, author, message
             from revision
             join (
-               select rev 
-               from node_change using (rev)
-               where path like "%(project)s%%"
+               select rev
+               from node_change
+               where path like "%s%%"
                group by rev
             ) changes using (rev)
-            """ % locals() + where)
+            """ % (SECONDS, project) + where + " order by 2")
         else:
             cursor.execute("""
-            insert into tmp_revision
-            select rev
+            select rev, %s, author, message
             from revision
-            """ + where)
+            """ % SECONDS + where + " order by 2")
+        revisions = cursor.fetchall()
 
-        if self.db_type in ('sqlite', 'postgres'):
-            inttype = 'int'
-        elif self.db_type == 'mysql':
-            inttype = 'signed'
+        if project:
+            query = """
+            select nc.rev, nc.path, nc.change_type, r.author
+            from node_change nc
+            join revision r %s
+            """ % USING
+            if where:
+                query += ' and path like "%s%%"' % project
+            else:
+                query += ' where path like "%s%%"' % project
+            cursor.execute(query)
         else:
-            assert False
+            cursor.execute("""
+            select nc.rev, nc.path, nc.change_type, r.author
+            from node_change nc
+            join revision r %s
+            """ % USING + where)
+        changes = cursor.fetchall()
 
-        cursor.execute("""
-        select min(cast(rev as %s)),
-               max(cast(rev as %s)),
-               min(%s),
-               max(%s),
-               count(distinct rev),
-               count(distinct author)
-        from revision
-        inner join tmp_revision using (rev)
-        """ % (inttype, inttype, SECONDS, SECONDS))
-        minrev, maxrev, mintime, maxtime, commits, developers = cursor.fetchall()[0]
+        # Convert the revision field from text to a number... this might
+        # break with DVCS-type SHA hashes.
+        revisions = [(int(rev), t, author, msg)
+                     for rev, t, author, msg in revisions]
+        changes = [(int(rev), path, change_type, author)
+                    for rev, path, change_type, author in changes]
+
+        minrev = min(rev for rev, _, _, _ in revisions)
+        maxrev = max(rev for rev, _, _, _ in revisions)
+        mintime = min(t for _, t, _, _ in revisions)
+        maxtime = max(t for _, t, _, _ in revisions)
+        commits = len(revisions)
+        developers = len(set(author for _, _, author, _ in revisions))
 
         data['maxrev'] = maxrev
         data['minrev'] = minrev
@@ -368,54 +371,14 @@ class TracStatsPlugin(Component):
             data['commitsperday'] = 0
             data['commitsperhour'] = 0
 
-        cursor.execute("""
-        select rev, %s, author, length(message) 
-        from revision 
-        inner join tmp_revision using (rev)
-        """ % SECONDS)
-        revisions = cursor.fetchall()
-        #revisions = []
-
-        if project:
-            cursor.execute("""
-            select nc.rev, nc.path, nc.change_type, r.author 
-            from node_change nc
-            inner join tmp_revision tr on tr.rev = nc.rev
-            join revision r on r.rev = nc.rev
-            where nc.path like "%(project)s%%"
-            """ % locals())
-        else:
-            cursor.execute("""
-            select nc.rev, nc.path, nc.change_type, r.author 
-            from node_change nc
-            inner join tmp_revision tr on tr.rev = nc.rev
-            join revision r on r.rev = nc.rev
-            """)
-        changes = cursor.fetchall()
-        #changes = []
-
         if revisions:
-            avgsize = sum(int(msg) for _, _, _, msg in revisions) / float(len(revisions))
+            avgsize = sum(len(msg) for _, _, _, msg in revisions) / float(len(revisions))
             avgchanges = float(len(changes)) / len(revisions)
             data['logentry'] = '%d chars' % avgsize
             data['changes'] = '%.2f' % avgchanges
         else:
             data['logentry'] = 'N/A'
             data['changes'] = 'N/A'
-
-        cursor.execute("""
-        select r.author, 
-            count(distinct r.rev) as commits, 
-            count(distinct r.rev) * 24.0 * 60 * 60 / (max(r.%s) - min(r.%s)) as rate,
-            count(c.path) as changes,
-            count(distinct c.path) as paths
-        from revision r
-        inner join tmp_revision tr using (rev)
-        join node_change c using (rev)
-        group by 1
-        order by 2 desc
-        """ % (SECONDS, SECONDS))
-        details = cursor.fetchall()
 
         if self.db_type == 'sqlite':
             strftime = "strftime('%%Y-%%W', %s, 'unixepoch')" % SECONDS
@@ -428,26 +391,24 @@ class TracStatsPlugin(Component):
 
         now = time.time()
         start = now - (52 * 7 * 24 * 60 * 60)
-        cursor.execute("""
-        select r.author,
-               %s,
-               count(r.rev)
-        from revision r
-        inner join tmp_revision tr using (rev)
-        where r.%s > %d
-        group by 1, 2
-        order by 1, 2
-        """ % (strftime, SECONDS, start))
-        rows = cursor.fetchall()
         d = {}
-        for author, week, count in rows:
-            try:
-                d[author][week] = count 
-            except KeyError:
-                d[author] = { week : count }
-    
+        for _, t, author, _ in revisions:
+            if t > start:
+                week = time.strftime('%Y-%W', time.localtime(t))
+                try:
+                    d[author][week] += 1
+                except KeyError:
+                    d[author] = { week : 1 }
+
         stats = []
-        for author, commits, rate, change, paths in details:
+        for author in sorted(set(author for _, _, author, _ in revisions)):
+            commits = len(set(x[0] for x in revisions if x[2] == author))
+            mintime = min(x[1] for x in revisions if x[2] == author)
+            maxtime = max(x[1] for x in revisions if x[2] == author)
+            rate = commits * 24.0 * 60 * 60 / (maxtime - mintime)
+            change = sum(1 for x in changes if x[3] == author)
+            paths = len(set(x[1] for x in changes if x[3] == author))
+
             year, week = map(int, time.strftime('%Y %W').split())
             weeks = []
             while len(weeks) < 52:
@@ -471,15 +432,8 @@ class TracStatsPlugin(Component):
                           'weeks': list(reversed(weeks)),})
         data['byauthors'] = stats
 
-        cursor.execute("""
-        select r.rev, r.%s, r.author, r.message 
-        from revision r
-        inner join tmp_revision tr on tr.rev = r.rev
-        order by time desc limit 10
-        """ % SECONDS)
-        rows = cursor.fetchall()
         stats = []
-        for rev, t, author, msg in rows:
+        for rev, t, author, msg in reversed(revisions[-10:]):
             stats.append({'name': msg, 
                           'author' : author,
                           'rev': rev,
@@ -682,13 +636,6 @@ class TracStatsPlugin(Component):
         cursor.execute("select distinct(author) from revision")
         authors = set(s for s, in cursor.fetchall())
 
-        cursor.execute("""
-        select message 
-        from revision 
-        inner join tmp_revision using (rev)
-        """)
-        messages = cursor.fetchall()
-
         projects = set(p[:p.find('/')] for _, p, _, _ in changes if p.find('/') != -1)
 
         ignore = set(stopwords)
@@ -699,7 +646,7 @@ class TracStatsPlugin(Component):
         delete.update(dict((ord(k), None) for k in '\"\''))
 
         d = {}
-        for msg, in messages:
+        for _, _, _, msg in revisions:
             msg = msg.lower()
             msg = msg.translate(delete)
             for word in msg.split():
@@ -1086,6 +1033,7 @@ adjust adjusted adjusting
 change changed changes changing 
 check checked checking 
 cleanup
+close closed closes closing 
 commit committed committing 
 correct corrected correcting
 create created creating
