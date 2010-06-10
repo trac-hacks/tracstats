@@ -330,10 +330,14 @@ class TracStatsPlugin(Component):
         changes = [(int(rev), path, change_type, author)
                     for rev, path, change_type, author in changes]
 
-        minrev = min(rev for rev, _, _, _ in revisions)
-        maxrev = max(rev for rev, _, _, _ in revisions)
-        mintime = min(t for _, t, _, _ in revisions)
-        maxtime = max(t for _, t, _, _ in revisions)
+        if revisions:
+            minrev = min(rev for rev, _, _, _ in revisions)
+            maxrev = max(rev for rev, _, _, _ in revisions)
+            mintime = min(t for _, t, _, _ in revisions)
+            maxtime = max(t for _, t, _, _ in revisions)
+        else:
+            minrev = maxrev = mintime = maxtime = 0
+
         commits = len(revisions)
         developers = len(set(author for _, _, author, _ in revisions))
 
