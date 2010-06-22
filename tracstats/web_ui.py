@@ -18,6 +18,8 @@ from trac.util.html import html, Markup
 from trac.web import IRequestHandler
 from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.web.chrome import add_ctxtnav, add_stylesheet, add_script
+from trac.versioncontrol.api import RepositoryManager
+
 
 # In version 0.12, the time field in the database was changed
 # from seconds to microseconds.  This allows us to support both
@@ -325,16 +327,17 @@ class TracStatsPlugin(Component):
 
         # Convert the revision field from text to a number... this might
         # break with DVCS-type SHA hashes.
-        revisions = [(int(rev), t, author, msg)
-                     for rev, t, author, msg in revisions]
-        changes = [(int(rev), path, change_type, author)
-                    for rev, path, change_type, author in changes]
+        if RepositoryManager(self.env).repository_type == 'svn':
+            revisions = [(int(rev), t, author, msg)
+                         for rev, t, author, msg in revisions]
+            changes = [(int(rev), path, change_type, author)
+                        for rev, path, change_type, author in changes]
 
         if revisions:
-            minrev = min(rev for rev, _, _, _ in revisions)
-            maxrev = max(rev for rev, _, _, _ in revisions)
-            mintime = min(t for _, t, _, _ in revisions)
-            maxtime = max(t for _, t, _, _ in revisions)
+            head = revisions[0]
+            tail = revisions[-1]
+            minrev, mintime = head[0], head[1]
+            maxrev, maxtime = tail[0], tail[1]
         else:
             minrev = maxrev = mintime = maxtime = 0
 
@@ -455,7 +458,7 @@ class TracStatsPlugin(Component):
         if not req.args.get('author', ''):
             d = {}
             total = set()
-            for rev, path, change_type, _ in sorted(changes, key=lambda x: (times[x[0]], int(x[0]), x[1])):
+            for rev, path, change_type, _ in sorted(changes, key=lambda x: (times[x[0]], x[1])):
                 if change_type in ('A', 'C'):
                     total.add(path)
                 elif change_type == 'D' and path in total:
