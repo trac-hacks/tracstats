@@ -34,7 +34,7 @@ else:
 # the "(repos,rev)" fields are now unique.  Doing it this way
 # is a big performance boost.
 if trac.__version__.startswith('0.12'):
-    USING = "on r.repos == nc.repos and r.rev == nc.rev"
+    USING = "on r.repos = nc.repos and r.rev = nc.rev"
 else:
     USING = "using (rev)"
 
