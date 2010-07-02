@@ -178,7 +178,7 @@ class TracStatsPlugin(Component):
         mintime, maxtime = cursor.fetchall()[0]
 
         if mintime and maxtime:
-            age = maxtime - mintime
+            age = float(maxtime - mintime)
         else:
             age = 0
         td = datetime.timedelta(seconds=age)
@@ -356,7 +356,7 @@ class TracStatsPlugin(Component):
             data['mintime'] = 'N/A'
 
         if mintime and maxtime:
-            age = maxtime - mintime
+            age = float(maxtime - mintime)
         else:
             age = 0
         td = datetime.timedelta(seconds=age)
@@ -413,7 +413,7 @@ class TracStatsPlugin(Component):
             mintime = min(x[1] for x in revisions if x[2] == author)
             maxtime = max(x[1] for x in revisions if x[2] == author)
             if maxtime > mintime:
-                rate = commits * 24.0 * 60 * 60 / (maxtime - mintime)
+                rate = commits * 24.0 * 60 * 60 / float(maxtime - mintime)
             else:
                 rate = 0
             change = sum(1 for x in changes if x[3] == author)
@@ -449,7 +449,7 @@ class TracStatsPlugin(Component):
                           'rev': rev,
                           'url': req.href.changeset(rev),
                           'url2': req.href.stats("code", author=author),
-                          'time': pretty_timedelta(to_datetime(t)),})
+                          'time': pretty_timedelta(to_datetime(float(t))),})
         data['recent'] = stats
 
         times = dict((rev, t) for rev, t, _, _ in revisions)
@@ -704,7 +704,7 @@ class TracStatsPlugin(Component):
             data['mintime'] = 'N/A'
 
         if mintime and maxtime:
-            age = maxtime - mintime
+            age = float(maxtime - mintime)
         else:
             age = 0
         td = datetime.timedelta(seconds=age)
@@ -811,7 +811,7 @@ class TracStatsPlugin(Component):
                           'author': author,
                           'url': req.href.wiki(name, version=version),
                           'url2': req.href.stats("wiki", author=author),
-                          'time': pretty_timedelta(to_datetime(t)),})
+                          'time': pretty_timedelta(to_datetime(float(t))),})
 
         data['recent'] = stats
 
@@ -840,7 +840,7 @@ class TracStatsPlugin(Component):
             data['mintime'] = 'N/A'
 
         if mintime and maxtime:
-            age = maxtime - mintime
+            age = float(maxtime - mintime)
         else:
             age = 0
         td = datetime.timedelta(seconds=age)
