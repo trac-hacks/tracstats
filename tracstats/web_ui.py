@@ -82,10 +82,18 @@ class TracStatsPlugin(Component):
 
         author = req.args.get('author', '')
         path = req.args.get('path', '')
+        last = req.args.get('last', '')
 
         where = []
         if author:
             where.append("author = '%s'" % author)
+        if last:
+            m = re.match('(\d+)m', last)
+            if m is not None:
+                now = time.time()
+                months, = m.groups()
+                ago = (24 * 60 * 60 * 30 * int(months))
+                where.append('%s > %s' % (SECONDS, now - ago))
         if where:
             where = 'where ' + ' and '.join(where)
         else:
@@ -93,6 +101,9 @@ class TracStatsPlugin(Component):
 
         data = {}
         data['author'] = author
+        data['last_1m'] = req.href.stats(path, last='1m', author=author)
+        data['last_12m'] = req.href.stats(path, last='12m', author=author)
+        data['last_all'] = req.href.stats(path, author=author)
 
         db = self.env.get_db_cnx()
         cursor = db.cursor()
@@ -887,7 +898,11 @@ class TracStatsPlugin(Component):
         select t.component, count(distinct t.id), count(distinct open.id)
         from ticket t
         join ticket open using (component)
-        where open.resolution is null or length(open.resolution) = 0
+        where (open.resolution is null or length(open.resolution) = 0) """ +
+                       where.replace('where',
+                                     'and').replace('time',
+                                                    't.time').replace('author',
+                                                                      't.reporter')+ """
         group by 1 order by 2 desc
         """)
         rows = cursor.fetchall()
@@ -903,11 +918,11 @@ class TracStatsPlugin(Component):
         if not req.args.get('author', ''):
             cursor.execute("""\
             select id, %s, 'none' as oldvalue, 'new' as newvalue
-            from ticket
+            from ticket """ % SECONDS + where + """
             union
             select ticket, %s, oldvalue, newvalue
-            from ticket_change where field = 'status'
-            """ % (SECONDS, SECONDS))
+            from ticket_change where field = 'status' """  % SECONDS +
+                           where.replace('where', 'and'))
             rows = cursor.fetchall()
             d = {}
             opened = 0
@@ -932,7 +947,7 @@ class TracStatsPlugin(Component):
         cursor.execute("""\
         select tc.ticket, t.component, t.summary, count(*)
         from ticket_change tc
-        join ticket t on t.id = tc.ticket """ + where + """
+        join ticket t on t.id = tc.ticket """ + where.replace('time', 'tc.time') + """
         group by 1, 2, 3
         order by 3 desc
         limit 10
@@ -953,10 +968,13 @@ class TracStatsPlugin(Component):
         cursor.execute("""
         select id, component, summary, %s
         from ticket
-        where status != 'closed'
+        where status != 'closed' """ % SECONDS + 
+                       where.replace('where',
+                                     'and').replace('author',
+                                                    'reporter') + """
         order by 4 asc
         limit 10
-        """ % SECONDS)
+        """)
         rows = cursor.fetchall()
         stats = []
         for ticket, component, summary, t in rows:
@@ -970,10 +988,10 @@ class TracStatsPlugin(Component):
 
         cursor.execute("""
         select id, component, summary, %s
-        from ticket
+        from ticket """ % SECONDS + where.replace('author', 'reporter') + """
         order by 4 desc
         limit 10
-        """ % SECONDS)
+        """)
         rows = cursor.fetchall()
         stats = []
         for ticket, component, summary, t in rows:
@@ -988,10 +1006,11 @@ class TracStatsPlugin(Component):
         cursor.execute("""
         select tc.ticket, t.component, t.summary, tc.%s
         from ticket_change tc
-        join ticket t on t.id = tc.ticket
+        join ticket t on t.id = tc.ticket """ % SECONDS +
+                       where.replace('where', 'and').replace('time', 'tc.time') + """
         order by 4 desc
         limit 10
-        """ % SECONDS)
+        """)
         rows = cursor.fetchall()
         stats = []
         for ticket, component, summary, t in rows:
@@ -1003,7 +1022,6 @@ class TracStatsPlugin(Component):
                           'time': pretty_timedelta(to_datetime(t)),})
 
         data['recent'] = stats
-
 
         return 'tickets.html', data, None
 
