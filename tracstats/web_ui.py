@@ -983,7 +983,7 @@ class TracStatsPlugin(Component):
                           'component': component,
                           'url': req.href.ticket(ticket),
                           'url2': req.href.query(component=component, order="priority"),
-                          'time': pretty_timedelta(to_datetime(t)),})
+                          'time': pretty_timedelta(to_datetime(float(t))),})
         data['oldest'] = stats
 
         cursor.execute("""
@@ -1000,7 +1000,7 @@ class TracStatsPlugin(Component):
                           'component': component,
                           'url': req.href.ticket(ticket),
                           'url2': req.href.query(component=component, order="priority"),
-                          'time': pretty_timedelta(to_datetime(t)),})
+                          'time': pretty_timedelta(to_datetime(float(t))),})
         data['newest'] = stats
 
         cursor.execute("""
@@ -1019,7 +1019,7 @@ class TracStatsPlugin(Component):
                           'component': component,
                           'url': req.href.ticket(ticket),
                           'url2': req.href.query(component=component, order="priority"),
-                          'time': pretty_timedelta(to_datetime(t)),})
+                          'time': pretty_timedelta(to_datetime(float(t))),})
 
         data['recent'] = stats
 
