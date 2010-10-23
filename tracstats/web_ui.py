@@ -228,7 +228,7 @@ class TracStatsPlugin(Component):
             join revision r %s
             where nc.path like '%s%%'
               and r.%s > %d
-            group by 1 
+            group by 1
             order by 1
             """ % (strftime, USING, root, SECONDS, start))
         else:
@@ -256,7 +256,7 @@ class TracStatsPlugin(Component):
         data['weeks'] = list(reversed(stats))
 
         now = time.time()
-        start = now - (30 * 24 * 60 * 60 * 10000) # FIXME:
+        start = now - (30 * 24 * 60 * 60)
         if root:
             cursor.execute("""
             select author, count(*)
@@ -284,7 +284,6 @@ class TracStatsPlugin(Component):
             stats.append({'name': author,
                           'url': req.href.stats("code", author=author),})
         data['byauthors'] = stats
-
 
         if root:
             cursor.execute("""
