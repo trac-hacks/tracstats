@@ -354,7 +354,7 @@ class TracStatsPlugin(Component):
             join (
                select rev
                from node_change
-               where path like "%s%%"
+               where path like '%s%%'
                group by rev
             ) changes using (rev)
             """ % (SECONDS, project) + where + " order by 2")
@@ -372,9 +372,9 @@ class TracStatsPlugin(Component):
             join revision r %s
             """ % USING
             if where:
-                query += ' and path like "%s%%"' % project
+                query += " and path like '%s%%'" % project
             else:
-                query += ' where path like "%s%%"' % project
+                query += " where path like '%s%%'" % project
             cursor.execute(query)
         else:
             cursor.execute("""
