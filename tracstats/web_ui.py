@@ -164,12 +164,27 @@ class TracStatsPlugin(Component):
 
     def _process(self, req, cursor, where, data):
 
-        cursor.execute("""
-        select count(distinct author), 
-               count(distinct rev) 
-        from revision
-        """)
-        authors, revisions, = cursor.fetchall()[0]
+        root = self.config.get('stats', 'root', '')
+        if root and not root.endswith('/'):
+            root += '/'
+
+        if root:
+            cursor.execute("""
+            select count(distinct r.author),
+                   count(distinct r.rev),
+                   min(%s), max(%s)
+            from node_change nc
+            join revision r %s
+            where nc.path like '%s%%'
+            """ % (SECONDS, SECONDS, USING, root))
+        else:
+            cursor.execute("""
+            select count(distinct author),
+                   count(distinct rev),
+                   min(%s), max(%s)
+            from revision
+            """ % (SECONDS, SECONDS))
+        authors, revisions, mintime, maxtime = cursor.fetchall()[0]
 
         cursor.execute("select count(distinct name) from wiki")
         pages, = cursor.fetchall()[0]
@@ -181,12 +196,6 @@ class TracStatsPlugin(Component):
         data['revisions'] = revisions
         data['pages'] = pages
         data['tickets'] = tickets
-
-        cursor.execute("""
-        select min(%s), max(%s)
-        from revision
-        """ % (SECONDS, SECONDS))
-        mintime, maxtime = cursor.fetchall()[0]
 
         if mintime and maxtime:
             age = float(maxtime - mintime)
@@ -211,14 +220,26 @@ class TracStatsPlugin(Component):
 
         now = time.time()
         start = now - (52 * 7 * 24 * 60 * 60)
-        cursor.execute("""
-        select %s,
-               count(*)
-        from revision
-        where %s > %d
-        group by 1 
-        order by 1
-        """ % (strftime, SECONDS, start))
+        if root:
+            cursor.execute("""
+            select %s,
+                   count(*)
+            from node_change nc
+            join revision r %s
+            where nc.path like '%s%%'
+              and r.%s > %d
+            group by 1 
+            order by 1
+            """ % (strftime, USING, root, SECONDS, start))
+        else:
+            cursor.execute("""
+            select %s,
+                   count(*)
+            from revision
+            where %s > %d
+            group by 1 
+            order by 1
+            """ % (strftime, SECONDS, start))
         rows = cursor.fetchall()
 
         d = dict(rows)
@@ -235,34 +256,56 @@ class TracStatsPlugin(Component):
         data['weeks'] = list(reversed(stats))
 
         now = time.time()
-        start = now - (30 * 24 * 60 * 60)
-        cursor.execute("""
-        select author, count(*) 
-        from revision 
-        where %s > %d 
-        group by 1 
-        order by 2 desc 
-        limit 10
-        """ % (SECONDS, start))
+        start = now - (30 * 24 * 60 * 60 * 10000) # FIXME:
+        if root:
+            cursor.execute("""
+            select author, count(*)
+            from node_change nc
+            join revision r %s
+            where nc.path like '%s%%'
+              and r.%s > %d
+            group by 1
+            order by 2 desc
+            limit 10
+            """ % (USING, root, SECONDS, start))
+        else:
+            cursor.execute("""
+            select author, count(*)
+            from revision
+            where %s > %d
+            group by 1
+            order by 2 desc
+            limit 10
+            """ % (SECONDS, start))
         rows = cursor.fetchall()
 
         stats = []
         for author, commits in rows:
-            stats.append({'name': author, 
+            stats.append({'name': author,
                           'url': req.href.stats("code", author=author),})
         data['byauthors'] = stats
 
 
-        cursor.execute("""
-        select nc.path
-        from node_change nc
-        join revision r %s
-        where %s > %d
-        """ % (USING, SECONDS, start))
+        if root:
+            cursor.execute("""
+            select nc.path
+            from node_change nc
+            join revision r %s
+            where nc.path like '%s%%'
+              and r.%s > %d
+            """ % (USING, root, SECONDS, start))
+        else:
+            cursor.execute("""
+            select nc.path
+            from node_change nc
+            join revision r %s
+            where %s > %d
+            """ % (USING, SECONDS, start))
         rows = cursor.fetchall()
 
         d = {}
         for path, in rows:
+            path = path[len(root):]
             slash = path.rfind('/')
             if slash > 0:
                 path = path[:slash]
@@ -273,11 +316,12 @@ class TracStatsPlugin(Component):
         stats = []
         for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
             stats.append({'name': k,
-                          'url': req.href.log(k),})
+                          'url': req.href.log(root + k),})
         data['bypaths'] = stats
 
         d = {}
         for path, in rows:
+            path = path[len(root):]
             slash = path.find('/')
             if slash < 0:
                 continue
@@ -290,14 +334,18 @@ class TracStatsPlugin(Component):
         stats = []
         for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
             stats.append({'name': k,
-                          'url': req.href.log(k),})
+                          'url': req.href.log(root + k),})
         data['byproject'] = stats
 
         return 'stats.html', data, None
 
     def _process_code(self, req, cursor, where, data):
 
-        project = req.args.get('project', '')
+        root = self.config.get('stats', 'root', '')
+        if root and not root.endswith('/'):
+            root += '/'
+
+        project = root + req.args.get('project', '')
 
         if project:
             cursor.execute("""
@@ -484,7 +532,7 @@ class TracStatsPlugin(Component):
 
         d = {}
         total = 0
-        for rev, t, _, _ in sorted(revisions, key=lambda x: x[1]):
+        for _, t, _, _ in sorted(revisions, key=lambda x: x[1]):
             total += 1
             d[int(t * 1000)] = total
         stats = []
@@ -497,7 +545,7 @@ class TracStatsPlugin(Component):
         times = dict((rev, t) for rev, t, _, _ in revisions)
         d = {}
         total = 0
-        for rev, path, change_type, _ in sorted(changes, key=lambda x: times[x[0]]):
+        for rev, _, _, _ in sorted(changes, key=lambda x: times[x[0]]):
             total += 1
             d[int(times[rev] * 1000)] = total
         stats = []
@@ -508,7 +556,8 @@ class TracStatsPlugin(Component):
         data['totalchanges'] = stats
 
         d = {}
-        for rev, path, change_type, _ in changes:
+        for _, path, _, _ in changes:
+            path = path[len(root):]
             try:
                 d[path] += 1
             except KeyError:
@@ -516,14 +565,14 @@ class TracStatsPlugin(Component):
         total = float(sum(d.itervalues()))
         stats = []
         for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
-            stats.append({'name': k, 
-                          'url': req.href.log(k),
+            stats.append({'name': k,
+                          'url': req.href.log(root + k),
                           'count': v,
                           'percent': '%.2f' % (100 * v / total)})
         data['byfiles'] = stats
 
         d = {}
-        for rev, path, change_type, author in changes:
+        for _, _, change_type, author in changes:
             try:
                 d[author][change_type] += 1
             except KeyError:
@@ -548,7 +597,8 @@ class TracStatsPlugin(Component):
         data['bychangetypes'] = stats
 
         d = {}
-        for rev, path, change_type, _ in changes:
+        for _, path, _, _ in changes:
+            path = path[len(root):]
             slash = path.rfind('/')
             if slash > 0:
                 path = path[:slash]
@@ -559,14 +609,15 @@ class TracStatsPlugin(Component):
         total = float(sum(d.itervalues()))
         stats = []
         for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
-            stats.append({'name': k, 
-                          'url': req.href.log(k),
+            stats.append({'name': k,
+                          'url': req.href.log(root + k),
                           'count': v,
                           'percent': '%.2f' % (100 * v / total)})
         data['bypaths'] = stats
 
         d = {}
-        for rev, path, change_type, _ in changes:
+        for _, path, _, _ in changes:
+            path = path[len(root):]
             slash = path.rfind('/')
             if slash > 0:
                 path = path[slash+1:]
@@ -580,13 +631,14 @@ class TracStatsPlugin(Component):
         total = float(sum(d.itervalues()))
         stats = []
         for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
-            stats.append({'name': k, 
+            stats.append({'name': k,
                           'count': v,
                           'percent': '%.2f' % (100 * v / total)})
         data['byfiletypes'] = stats
 
         d = {}
-        for rev, path, change_type, _ in changes:
+        for _, path, _, _ in changes:
+            path = path[len(root):]
             slash = path.find('/')
             if slash < 0:
                 continue
@@ -599,8 +651,8 @@ class TracStatsPlugin(Component):
                 d[project] = [1, set([rev]), set([path])]
         stats = []
         for k, v in sorted(d.iteritems(), key=lambda x: len(x[0][1]), reverse=True):
-            stats.append({'name': k, 
-                          'url': req.href.browser(k),
+            stats.append({'name': k,
+                          'url': req.href.browser(root + k),
                           'changes': v[0],
                           'commits': len(v[1]),
                           'paths': len(v[2]),})
@@ -615,7 +667,7 @@ class TracStatsPlugin(Component):
             d[hours[hour]] += 1
         stats = []
         for x, y in sorted(d.iteritems()):
-            stats.append({'x': x, 
+            stats.append({'x': x,
                           'y': y,})
         data['byhour'] = stats
 

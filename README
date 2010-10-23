@@ -65,3 +65,9 @@ It is configured in the trac.ini file by enabling and configuring::
 
 The STATS_VIEW permission is used to control access to the statistics pages.
 
+In addition, an optional "project root" within your repository can be
+configured as the base for all projects and source code statistics::
+
+    [stats]
+    root = path/to/projects
+
