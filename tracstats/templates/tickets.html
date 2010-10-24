@@ -131,6 +131,37 @@ $(document).ready(function()
 
 <br />
 
+<h2>Tickets by milestone</h2>
+
+<table id="ticketsbymilestone" class="tablesorter">
+<thead>
+<tr>
+    <th>Milestone</th>
+    <th>Open</th>
+    <th>Total</th>
+</tr>
+</thead>
+<tbody>
+<py:for each="stat in bymilestone">
+<tr>
+    <td width="150"><a href="${stat.url}">${stat.name}</a></td>
+    <td width="100" align="right">${stat.open}</td>
+    <td width="100" align="right">${stat.total}</td>
+</tr>
+</py:for>
+</tbody>
+</table>
+
+<script language="javascript" type="text/javascript">
+$(document).ready(function()
+    {
+        $("#ticketsbymilestone").tablesorter( {sortList: [[1,1]]} );
+    }
+);
+</script>
+
+<br />
+
 <h2>Most active tickets</h2>
 
 <table>

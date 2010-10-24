@@ -965,6 +965,26 @@ class TracStatsPlugin(Component):
                           'total' : total,})
         data['bycomponent'] = stats
 
+        cursor.execute("""\
+        select t.milestone, count(distinct t.id), count(distinct open.id)
+        from ticket t
+        join ticket open using (milestone)
+        where (open.resolution is null or length(open.resolution) = 0) """ +
+                       where.replace('where',
+                                     'and').replace('time',
+                                                    't.time').replace('author',
+                                                                      't.reporter')+ """
+        group by 1 order by 2 desc
+        """)
+        rows = cursor.fetchall()
+        stats = []
+        for milestone, total, open in rows:
+            stats.append({'name': milestone,
+                          'url': req.href.query(status=("new", "opened", "resolved"), milestone=milestone, order="priority"),
+                          'open' : open,
+                          'total' : total,})
+        data['bymilestone'] = stats
+
         stats = []
         if not req.args.get('author', ''):
             cursor.execute("""\
