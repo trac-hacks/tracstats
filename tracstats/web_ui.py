@@ -1,6 +1,7 @@
 
 # stdlib imports
 import datetime
+import locale
 import re
 import string
 import time
@@ -670,7 +671,14 @@ class TracStatsPlugin(Component):
                           'y': y,})
         data['byhour'] = stats
 
-        days = dict((day, i) for i, day in enumerate(('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')))
+        days = dict((day, i) for i, day in
+                     enumerate((locale.nl_langinfo(locale.ABDAY_1),
+                                locale.nl_langinfo(locale.ABDAY_2),
+                                locale.nl_langinfo(locale.ABDAY_3),
+                                locale.nl_langinfo(locale.ABDAY_4),
+                                locale.nl_langinfo(locale.ABDAY_5),
+                                locale.nl_langinfo(locale.ABDAY_6),
+                                locale.nl_langinfo(locale.ABDAY_7))))
         d = dict((i, 0) for i in range(7))
         for rev, t, author, _ in revisions:
             day = time.strftime('%a', time.localtime(t))
