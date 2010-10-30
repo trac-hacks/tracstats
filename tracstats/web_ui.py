@@ -370,11 +370,11 @@ class TracStatsPlugin(Component):
             select nc.rev, nc.path, nc.change_type, r.author
             from node_change nc
             join revision r %s
-            """ % USING
+            """ % USING + where
             if where:
-                query += " and path like '%s%%'" % project
+                query += " and nc.path like '%s%%'" % project
             else:
-                query += " where path like '%s%%'" % project
+                query += " where nc.path like '%s%%'" % project
             cursor.execute(query)
         else:
             cursor.execute("""
