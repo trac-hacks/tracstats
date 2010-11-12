@@ -6,8 +6,11 @@ PACKAGE = 'TracStats'
 VERSION = '0.3'
 
 setup(
-    name=PACKAGE, version=VERSION,
-    description="A plugin for project statistics",
+    name = PACKAGE,
+    version = VERSION,
+    description = "A plugin for project statistics",
+    author = "mrjbq7",
+    url = "http://github.com/mrjbq7/tracstats",
     packages=find_packages(exclude=['ez_setup', '*.tests*']),
     package_data={
         'tracstats': [
