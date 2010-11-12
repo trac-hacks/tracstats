@@ -16,6 +16,6 @@ install:
 	/etc/init.d/httpd restart
 
 clean:
-	rm -rf build dist 
+	rm -rf build dist
 
 
