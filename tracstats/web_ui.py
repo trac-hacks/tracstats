@@ -39,6 +39,13 @@ if trac.__version__.startswith('0.12'):
 else:
     USING = "using (rev)"
 
+# In version 0.12, support for multiple repositories was
+# added.  We use the reponame to generate proper changeset links.
+if trac.__version__.startswith('0.12'):
+    REPOS = 'r.repos'
+else:
+    REPOS = "'' as repos"
+
 
 class TracStatsPlugin(Component):
     implements(INavigationContributor, IPermissionRequestor, IRequestHandler, ITemplateProvider)
@@ -349,20 +356,20 @@ class TracStatsPlugin(Component):
 
         if project:
             cursor.execute("""
-            select rev, %s, author, message
-            from revision
+            select rev, %s, author, message, %s
+            from revision r
             join (
                select rev
                from node_change
                where path like '%s%%'
                group by rev
             ) changes using (rev)
-            """ % (SECONDS, project) + where + " order by 2")
+            """ % (SECONDS, REPOS, project) + where + " order by 2")
         else:
             cursor.execute("""
-            select rev, %s, author, message
-            from revision
-            """ % SECONDS + where + " order by 2")
+            select rev, %s, author, message, %s
+            from revision r
+            """ % (SECONDS, REPOS) + where + " order by 2")
         revisions = cursor.fetchall()
 
         if project:
@@ -384,11 +391,22 @@ class TracStatsPlugin(Component):
             """ % USING + where)
         changes = cursor.fetchall()
 
+        # In version 0.12, support for multiple repositories was
+        # added.  We use the reponame to generate proper changeset links.
+        if trac.__version__.startswith('0.12'):
+            cursor.execute("""
+            select id, value
+            from repository
+            where name = 'name'""")
+            repositories = dict(cursor.fetchall())
+        else:
+            repositories = {}
+
         # Convert the revision field from text to a number... this might
         # break with DVCS-type SHA hashes.
         if RepositoryManager(self.env).repository_type == 'svn':
-            revisions = [(int(rev), t, author, msg)
-                         for rev, t, author, msg in revisions]
+            revisions = [(int(rev), t, author, msg, repos)
+                         for rev, t, author, msg, repos in revisions]
             changes = [(int(rev), path, change_type, author)
                         for rev, path, change_type, author in changes]
 
@@ -401,7 +419,7 @@ class TracStatsPlugin(Component):
             minrev = maxrev = mintime = maxtime = 0
 
         commits = len(revisions)
-        developers = len(set(author for _, _, author, _ in revisions))
+        developers = len(set(author for _, _, author, _, _ in revisions))
 
         data['maxrev'] = maxrev
         data['minrev'] = minrev
@@ -438,7 +456,7 @@ class TracStatsPlugin(Component):
             data['commitsperhour'] = 0
 
         if revisions:
-            avgsize = sum(len(msg) for _, _, _, msg in revisions) / float(len(revisions))
+            avgsize = sum(len(msg) for _, _, _, msg, _ in revisions) / float(len(revisions))
             avgchanges = float(len(changes)) / len(revisions)
             data['logentry'] = '%d chars' % avgsize
             data['changes'] = '%.2f' % avgchanges
@@ -458,7 +476,7 @@ class TracStatsPlugin(Component):
         now = time.time()
         start = now - (52 * 7 * 24 * 60 * 60)
         d = {}
-        for _, t, author, _ in revisions:
+        for _, t, author, _, _ in revisions:
             if t > start:
                 week = time.strftime('%Y-%W', time.localtime(t))
                 try:
@@ -467,7 +485,7 @@ class TracStatsPlugin(Component):
                     d[author] = { week : 1 }
 
         stats = []
-        for author in sorted(set(author for _, _, author, _ in revisions)):
+        for author in sorted(set(author for _, _, author, _, _ in revisions)):
             commits = len(set(x[0] for x in revisions if x[2] == author))
             mintime = min(x[1] for x in revisions if x[2] == author)
             maxtime = max(x[1] for x in revisions if x[2] == author)
@@ -502,16 +520,17 @@ class TracStatsPlugin(Component):
         data['byauthors'] = stats
 
         stats = []
-        for rev, t, author, msg in reversed(revisions[-10:]):
-            stats.append({'name': msg, 
+        for rev, t, author, msg, repos in reversed(revisions[-10:]):
+            reponame = repositories.get(repos, '')
+            stats.append({'name': msg,
                           'author' : author,
                           'rev': rev,
-                          'url': req.href.changeset(rev),
+                          'url': req.href.changeset(rev, reponame),
                           'url2': req.href.stats("code", author=author),
                           'time': pretty_timedelta(to_datetime(float(t))),})
         data['recent'] = stats
 
-        times = dict((rev, t) for rev, t, _, _ in revisions)
+        times = dict((rev, t) for rev, t, _, _, _ in revisions)
 
         stats = []
         if not req.args.get('author', ''):
@@ -532,7 +551,7 @@ class TracStatsPlugin(Component):
 
         d = {}
         total = 0
-        for _, t, _, _ in sorted(revisions, key=lambda x: x[1]):
+        for _, t, _, _, _ in sorted(revisions, key=lambda x: x[1]):
             total += 1
             d[int(t * 1000)] = total
         stats = []
@@ -542,7 +561,7 @@ class TracStatsPlugin(Component):
                           'y': v,})
         data['totalcommits'] = stats
 
-        times = dict((rev, t) for rev, t, _, _ in revisions)
+        times = dict((rev, t) for rev, t, _, _, _ in revisions)
         d = {}
         total = 0
         for rev, _, _, _ in sorted(changes, key=lambda x: times[x[0]]):
@@ -662,7 +681,7 @@ class TracStatsPlugin(Component):
         hours += ['%d:00' % i for i in range(10, 24)]
         hours = dict((hour, i) for i, hour in enumerate(hours))
         d = dict((i, 0) for i in range(24))
-        for rev, t, author, _ in revisions:
+        for rev, t, author, _, _ in revisions:
             hour = time.strftime('%H:00', time.localtime(t))
             d[hours[hour]] += 1
         stats = []
@@ -680,7 +699,7 @@ class TracStatsPlugin(Component):
                                 locale.nl_langinfo(locale.ABDAY_6),
                                 locale.nl_langinfo(locale.ABDAY_7))))
         d = dict((i, 0) for i in range(7))
-        for rev, t, author, _ in revisions:
+        for rev, t, author, _, _ in revisions:
             day = time.strftime('%a', time.localtime(t))
             d[days[day]] += 1
         stats = []
@@ -690,7 +709,7 @@ class TracStatsPlugin(Component):
         data['byday'] = stats
 
         d = {}
-        for _, t, _, _ in revisions:
+        for _, t, _, _, _ in revisions:
             t = time.localtime(t)
             t = (t[0], t[1], 0, 0, 0, 0, 0, 0, 0)
             t = time.mktime(t)
@@ -726,7 +745,7 @@ class TracStatsPlugin(Component):
         delete.update(dict((ord(k), None) for k in '\"\''))
 
         d = {}
-        for _, _, _, msg in revisions:
+        for _, _, _, msg, _ in revisions:
             msg = msg.lower()
             msg = msg.translate(delete)
             for word in msg.split():
