@@ -46,6 +46,9 @@ Some features include:
 The TracStats plugin supports Trac installations with SQLite, MySQL, and
 PostgreSQL database backends.
 
+The TracStats plugin has been tested with Subversion, Mercurial, and Git
+version control systems.
+
 
 Installation
 ============
@@ -71,3 +74,16 @@ configured as the base for all projects and source code statistics::
     [stats]
     root = path/to/projects
 
+
+Troubleshooting
+===============
+
+If you use Git (i.e. the GitPlugin for Trac) and are not able to see any of
+the code statistics, you likely need to configure it to cache the repository
+to make it work:
+
+    [git]
+    cached_repository = true
+    persistent_cache = true
+
+You might need to run ``trac-admin repository resync`` after the change.
