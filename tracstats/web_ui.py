@@ -402,14 +402,6 @@ class TracStatsPlugin(Component):
         else:
             repositories = {}
 
-        # Convert the revision field from text to a number... this might
-        # break with DVCS-type SHA hashes.
-        if RepositoryManager(self.env).repository_type == 'svn':
-            revisions = [(int(rev), t, author, msg, repos)
-                         for rev, t, author, msg, repos in revisions]
-            changes = [(int(rev), path, change_type, author)
-                        for rev, path, change_type, author in changes]
-
         if revisions:
             head = revisions[0]
             tail = revisions[-1]
