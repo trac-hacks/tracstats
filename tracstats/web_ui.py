@@ -263,7 +263,19 @@ class TracStatsPlugin(Component):
                 week = 52
         data['weeks'] = list(reversed(stats))
 
+        # In version 0.12, support for multiple repositories was
+        # added.  We use the reponame to generate proper changeset links.
+        if trac.__version__.startswith('0.12'):
+            cursor.execute("""
+            select id, value
+            from repository
+            where name = 'name'""")
+            repositories = dict(cursor.fetchall())
+        else:
+            repositories = {}
+
         now = time.time()
+        now = 0
         start = now - (30 * 24 * 60 * 60)
         if root:
             cursor.execute("""
@@ -295,44 +307,49 @@ class TracStatsPlugin(Component):
 
         if root:
             cursor.execute("""
-            select nc.path
+            select %s, nc.path
             from node_change nc
             join revision r %s
             where nc.path like '%s%%'
               and r.%s > %d
-            """ % (USING, root, SECONDS, start))
+            """ % (REPOS, USING, root, SECONDS, start))
         else:
             cursor.execute("""
-            select nc.path
+            select %s, nc.path
             from node_change nc
             join revision r %s
             where %s > %d
-            """ % (USING, SECONDS, start))
+            """ % (REPOS, USING, SECONDS, start))
         rows = cursor.fetchall()
 
         d = {}
-        for path, in rows:
+        for repos, path in rows:
             path = path[len(root):]
             slash = path.rfind('/')
             if slash > 0:
                 path = path[:slash]
+            path = (repos, path)
             try:
                 d[path] += 1
             except KeyError:
                 d[path] = 1
         stats = []
         for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
-            stats.append({'name': k,
-                          'url': req.href.log(root + k),})
+            repos, path = k
+            reponame = repositories.get(repos, '')
+            if reponame:
+                path = reponame + ':' + path
+            stats.append({'name': path,
+                          'url': req.href.log(reponame, root + k[1]),})
         data['bypaths'] = stats
 
         d = {}
-        for path, in rows:
+        for repos, path in rows:
             path = path[len(root):]
             slash = path.find('/')
             if slash < 0:
                 continue
-            project = path[:slash] or 'None'
+            project = (repos, path[:slash] or 'None')
             try:
                 d[project] += 1
             except KeyError:
@@ -340,8 +357,12 @@ class TracStatsPlugin(Component):
         total = float(sum(d.itervalues()))
         stats = []
         for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
-            stats.append({'name': k,
-                          'url': req.href.log(root + k),})
+            repos, project = k
+            reponame = repositories.get(repos, '')
+            if reponame:
+                project = reponame + ':' + project
+            stats.append({'name': project,
+                          'url': req.href.log(reponame, root + k[1]),})
         data['byproject'] = stats
 
         return 'stats.html', data, None
@@ -374,10 +395,10 @@ class TracStatsPlugin(Component):
 
         if project:
             query = """
-            select nc.rev, nc.path, nc.change_type, r.author
+            select nc.rev, %s, nc.path, nc.change_type, r.author
             from node_change nc
             join revision r %s
-            """ % USING + where
+            """ % (REPOS, USING) + where
             if where:
                 query += " and nc.path like '%s%%'" % project
             else:
@@ -385,10 +406,10 @@ class TracStatsPlugin(Component):
             cursor.execute(query)
         else:
             cursor.execute("""
-            select nc.rev, nc.path, nc.change_type, r.author
+            select nc.rev, %s, nc.path, nc.change_type, r.author
             from node_change nc
             join revision r %s
-            """ % USING + where)
+            """ % (REPOS, USING) + where)
         changes = cursor.fetchall()
 
         # In version 0.12, support for multiple repositories was
@@ -485,8 +506,8 @@ class TracStatsPlugin(Component):
                 rate = commits * 24.0 * 60 * 60 / float(maxtime - mintime)
             else:
                 rate = 0
-            change = sum(1 for x in changes if x[3] == author)
-            paths = len(set(x[1] for x in changes if x[3] == author))
+            change = sum(1 for x in changes if x[4] == author)
+            paths = len(set(x[2] for x in changes if x[4] == author))
 
             year, week = map(int, time.strftime('%Y %W').split())
             weeks = []
@@ -528,7 +549,7 @@ class TracStatsPlugin(Component):
         if not req.args.get('author', ''):
             d = {}
             total = set()
-            for rev, path, change_type, _ in sorted(changes, key=lambda x: (times[x[0]], x[1])):
+            for rev, _, path, change_type, _ in sorted(changes, key=lambda x: (times[x[0]], x[1])):
                 if change_type in ('A', 'C'):
                     total.add(path)
                 elif change_type == 'D' and path in total:
@@ -556,7 +577,7 @@ class TracStatsPlugin(Component):
         times = dict((rev, t) for rev, t, _, _, _ in revisions)
         d = {}
         total = 0
-        for rev, _, _, _ in sorted(changes, key=lambda x: times[x[0]]):
+        for rev, _, _, _, _ in sorted(changes, key=lambda x: times[x[0]]):
             total += 1
             d[int(times[rev] * 1000)] = total
         stats = []
@@ -567,8 +588,9 @@ class TracStatsPlugin(Component):
         data['totalchanges'] = stats
 
         d = {}
-        for _, path, _, _ in changes:
+        for _, repos, path, _, _ in changes:
             path = path[len(root):]
+            path = (repos, path)
             try:
                 d[path] += 1
             except KeyError:
@@ -576,14 +598,18 @@ class TracStatsPlugin(Component):
         total = float(sum(d.itervalues()))
         stats = []
         for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
-            stats.append({'name': k,
-                          'url': req.href.log(root + k),
+            repos, path = k
+            reponame = repositories.get(repos, '')
+            if reponame:
+                path = reponame + ':' + path
+            stats.append({'name': path,
+                          'url': req.href.log(reponame, root + k[1]),
                           'count': v,
                           'percent': '%.2f' % (100 * v / total)})
         data['byfiles'] = stats
 
         d = {}
-        for _, _, change_type, author in changes:
+        for _, _, _, change_type, author in changes:
             try:
                 d[author][change_type] += 1
             except KeyError:
@@ -608,11 +634,12 @@ class TracStatsPlugin(Component):
         data['bychangetypes'] = stats
 
         d = {}
-        for _, path, _, _ in changes:
+        for _, repos, path, _, _ in changes:
             path = path[len(root):]
             slash = path.rfind('/')
             if slash > 0:
                 path = path[:slash]
+            path = (repos, path)
             try:
                 d[path] += 1
             except KeyError:
@@ -620,14 +647,18 @@ class TracStatsPlugin(Component):
         total = float(sum(d.itervalues()))
         stats = []
         for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
-            stats.append({'name': k,
-                          'url': req.href.log(root + k),
+            repos, path = k
+            reponame = repositories.get(repos, '')
+            if reponame:
+                path = reponame + ':' + path
+            stats.append({'name': path,
+                          'url': req.href.log(reponame, root + k[1]),
                           'count': v,
                           'percent': '%.2f' % (100 * v / total)})
         data['bypaths'] = stats
 
         d = {}
-        for _, path, _, _ in changes:
+        for _, _, path, _, _ in changes:
             path = path[len(root):]
             slash = path.rfind('/')
             if slash > 0:
@@ -648,12 +679,12 @@ class TracStatsPlugin(Component):
         data['byfiletypes'] = stats
 
         d = {}
-        for _, path, _, _ in changes:
+        for rev, repos, path, _, _ in changes:
             path = path[len(root):]
             slash = path.find('/')
             if slash < 0:
                 continue
-            project = path[:slash] or 'None'
+            project = (repos, path[:slash] or 'None')
             try:
                 d[project][0] += 1
                 d[project][1].add(rev)
@@ -662,8 +693,12 @@ class TracStatsPlugin(Component):
                 d[project] = [1, set([rev]), set([path])]
         stats = []
         for k, v in sorted(d.iteritems(), key=lambda x: len(x[0][1]), reverse=True):
-            stats.append({'name': k,
-                          'url': req.href.browser(root + k),
+            repos, project = k
+            reponame = repositories.get(repos, '')
+            if reponame:
+                project = reponame + ':' + project
+            stats.append({'name': project,
+                          'url': req.href.browser(reponame, root + k[1]),
                           'changes': v[0],
                           'commits': len(v[1]),
                           'paths': len(v[2]),})
@@ -727,7 +762,7 @@ class TracStatsPlugin(Component):
         cursor.execute("select distinct(author) from revision")
         authors = set(s for s, in cursor.fetchall())
 
-        projects = set(p[:p.find('/')] for _, p, _, _ in changes if p.find('/') != -1)
+        projects = set(p[:p.find('/')] for _, _, p, _, _ in changes if p.find('/') != -1)
 
         ignore = set(stopwords)
         ignore.update(authors)
