@@ -723,18 +723,10 @@ class TracStatsPlugin(Component):
                           'y': y,})
         data['byhour'] = stats
 
-        days = dict((day, i) for i, day in
-                     enumerate((locale.nl_langinfo(locale.ABDAY_1),
-                                locale.nl_langinfo(locale.ABDAY_2),
-                                locale.nl_langinfo(locale.ABDAY_3),
-                                locale.nl_langinfo(locale.ABDAY_4),
-                                locale.nl_langinfo(locale.ABDAY_5),
-                                locale.nl_langinfo(locale.ABDAY_6),
-                                locale.nl_langinfo(locale.ABDAY_7))))
-        d = dict((i, 0) for i in range(7))
+        d = dict((str(i), 0) for i in range(7))
         for rev, t, author, _, _ in revisions:
-            day = time.strftime('%a', time.localtime(t))
-            d[days[day]] += 1
+            day = time.strftime('%w', time.localtime(t))
+            d[day] += 1
         stats = []
         for x, y in sorted(d.iteritems()):
             stats.append({'x': x, 
