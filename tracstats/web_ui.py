@@ -13,7 +13,7 @@ import trac
 from trac.core import *
 from trac.mimeview import Mimeview
 from trac.perm import IPermissionRequestor
-from trac.util import get_reporter_id
+from trac.util import get_reporter_id, to_unicode
 from trac.util.datefmt import pretty_timedelta, to_datetime
 from trac.util.html import html, Markup
 from trac.web import IRequestHandler
@@ -145,29 +145,35 @@ class TracStatsPlugin(Component):
             data['title'] = 'Stats'
             result = self._process(req, cursor, where, data)
             cursor.close()
-            return result
 
         elif path == '/code':
             data['title'] = 'Code' + (author and (' (%s)' % author))
             result = self._process_code(req, cursor, where, data)
             cursor.close()
-            return result
 
         elif path == '/wiki':
             data['title'] = 'Wiki ' + (author and (' (%s)' % author))
             result = self._process_wiki(req, cursor, where, data)
             cursor.close()
-            return result
 
         elif path == '/tickets':
             data['title'] = 'Tickets' + (author and (' (%s)' % author))
             result = self._process_tickets(req, cursor, where, data)
             cursor.close()
-            return result
 
         else:
             cursor.close()
             raise ValueError, "unknown path '%s'" % path
+
+        # Clean the unicode values for Genshi
+        template_name, data, content_type = result
+        new_data = {}
+        for k, v in data.iteritems():
+            if isinstance(v, str):
+                new_data[k] = to_unicode(v)
+            else:
+                new_data[k] = v
+        return template_name, new_data, content_type
 
 
     def _process(self, req, cursor, where, data):
