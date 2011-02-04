@@ -97,10 +97,22 @@ class TracStatsPlugin(Component):
             where.append("author = '%s'" % author)
         if last:
             m = re.match('(\d+)m', last)
+            w = re.match('(\d+)w', last)
+            d = re.match('(\d+)d', last)
             if m is not None:
                 now = time.time()
                 months, = m.groups()
                 ago = (24 * 60 * 60 * 30 * int(months))
+                where.append('%s > %s' % (SECONDS, now - ago))
+            elif w is not None:
+                now = time.time()
+                weeks, = w.groups()
+                ago = (24 * 60 * 60 * 7 * int(weeks))
+                where.append('%s > %s' % (SECONDS, now - ago))
+            elif d is not None:
+                now = time.time()
+                days, = d.groups()
+                ago = (24 * 60 * 60 * int(days))
                 where.append('%s > %s' % (SECONDS, now - ago))
         if where:
             where = 'where ' + ' and '.join(where)
