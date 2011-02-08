@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 PACKAGE = 'TracStats'
-VERSION = '0.3'
+VERSION = '0.4'
 
 setup(
     name = PACKAGE,
