@@ -253,7 +253,7 @@ $(document).ready(function()
     {
         var values = [<py:for each="week in stat.weeks">${week.total}<py:if 
                               test="week != stat.weeks[-1]">,</py:if></py:for>];
-        $("#${stat.name}weeks").sparkline(values, {
+        $("[id=${stat.name}weeks]").sparkline(values, {
                                 type: "bar",
                                 barColor: "lightgray",
                                 barWidth: 7,
