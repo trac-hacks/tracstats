@@ -52,7 +52,7 @@ $(function () {
 
     var options = {
         lines: { show: true, fill: true },
-        xaxis: { mode: "time", timeformat: "%b %y" }, 
+        xaxis: { mode: "time", timeformat: "%d %b %y" }, 
         colors: [ "#afd8f8" ],
     };
 
@@ -75,7 +75,7 @@ $(function () {
 
     var options = {
         lines: { show: true, fill: true },
-        xaxis: { mode: "time", timeformat: "%b %y" }, 
+        xaxis: { mode: "time", timeformat: "%d %b %y" }, 
     };
 
     var d = [<py:for each="stat in totalcommits">[${stat.x}, ${stat.y}]<py:if 
@@ -131,7 +131,7 @@ $(function () {
 
     var options = {
         lines: { show: true, fill: true },
-        xaxis: { mode: "time", timeformat: "%b %y" }, 
+        xaxis: { mode: "time", timeformat: "%d %b %y" }, 
         colors: [ "#afd8f8" ],
     };
 
@@ -221,7 +221,7 @@ $(function () {
 
     var options = {
         lines: { show: true, fill: true},
-        xaxis: { mode: "time", timeformat: "%b %y" }, 
+        xaxis: { mode: "time", timeformat: "%d %b %y" }, 
     };
 
     var d = [<py:for each="stat in totalchanges">[${stat.x}, ${stat.y}]<py:if 
