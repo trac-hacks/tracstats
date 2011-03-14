@@ -145,7 +145,7 @@ class TracStatsPlugin(Component):
         add_script(req, 'stats/jquery.flot.min.js')
         add_script(req, 'stats/jquery.tablesorter.min.js')
         add_script(req, 'stats/jquery.sparkline.min.js')
-        add_script(req, 'stats/excanvas.pack.js')
+        add_script(req, 'stats/excanvas.compiled.js')
 
         # Include context navigation links
         add_ctxtnav(req, 'Summary', req.href.stats())
