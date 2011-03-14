@@ -49,7 +49,7 @@ $(function () {
     
     var options = {
         lines: { show: true, fill: true },
-        xaxis: { mode: "time", timeformat: "%b %y" },
+        xaxis: { mode: "time", timeformat: "%d %b %y" },
         colors: [ "#afd8f8", "#cb4b4b" ],
         legend: { show: true, backgroundOpacity: 0, },
     };
@@ -61,7 +61,7 @@ $(function () {
     var d2 = [<py:for each="stat in history">[${stat.x}, ${stat.accepted}]<py:if
                       test="stat != history[-1]">,</py:if></py:for>];
 
-    $.plot($("#opentickets"), [ { data: d1, label: 'Opened' },
+    $.plot($("#opentickets"), [ { data: d1, label: 'Open' },
                                 { data: d2, label: 'Accepted' } ], options);
 });
 </script>
