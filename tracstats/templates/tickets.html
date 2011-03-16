@@ -55,11 +55,11 @@ $(function () {
     };
 
 
-    var d1 = [<py:for each="stat in history">[${stat.x}, ${stat.opened}]<py:if
-                      test="stat != history[-1]">,</py:if></py:for>];
+    var d1 = [<py:for each="i in range(len(history))">[${history[i].x}, ${history[i].opened}]<py:if
+                      test="i != len(history)-1">,[${history[i+1].x}, ${history[i].opened}],</py:if></py:for>];
 
-    var d2 = [<py:for each="stat in history">[${stat.x}, ${stat.accepted}]<py:if
-                      test="stat != history[-1]">,</py:if></py:for>];
+    var d2 = [<py:for each="i in range(len(history))">[${history[i].x}, ${history[i].accepted}]<py:if
+                      test="i != len(history)-1">,[${history[i+1].x}, ${history[i].accepted}],</py:if></py:for>];
 
     $.plot($("#opentickets"), [ { data: d1, label: 'Open' },
                                 { data: d2, label: 'Accepted' } ], options);
