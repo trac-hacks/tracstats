@@ -145,7 +145,7 @@ class TracStatsPlugin(Component):
         add_script(req, 'stats/jquery.flot.min.js')
         add_script(req, 'stats/jquery.tablesorter.min.js')
         add_script(req, 'stats/jquery.sparkline.min.js')
-        add_script(req, 'stats/excanvas.pack.js')
+        add_script(req, 'stats/excanvas.compiled.js')
 
         # Include context navigation links
         add_ctxtnav(req, 'Summary', req.href.stats())
@@ -1072,7 +1072,7 @@ class TracStatsPlugin(Component):
                 elif newvalue == "closed" and oldvalue != "closed":
                     opened -= 1
                 d[int(t * 1000)] = (opened, accepted)
-            steps = max(len(d) / 10, 1)
+            steps = max(len(d) / 250, 1)
             for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
                 stats.append({'x': k,
                               'opened': v[0],
