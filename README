@@ -86,4 +86,5 @@ to make it work:
     cached_repository = true
     persistent_cache = true
 
-You might need to run ``trac-admin repository resync`` after the change.
+You might need to run ``trac-admin <project-env> repository resync
+<reponame>`` after the change.
