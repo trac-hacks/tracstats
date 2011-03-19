@@ -890,7 +890,7 @@ class TracStatsPlugin(Component):
                 total.add(name)
                 d[int(t)] = len(total)
             stats = []
-            steps = max(len(d) / 10, 1)
+            steps = max(len(d) / 250, 1)
             for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
                 if k > since:
                     stats.append({'x': k * 1000, 
