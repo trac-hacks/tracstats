@@ -95,6 +95,7 @@ class TracStatsPlugin(Component):
         where = []
         if author:
             where.append("author = '%s'" % author)
+        since = 0
         if last:
             m = re.match('(\d+)m', last)
             w = re.match('(\d+)w', last)
@@ -121,7 +122,6 @@ class TracStatsPlugin(Component):
             where = 'where ' + ' and '.join(where)
         else:
             where = ''
-            since = 0
 
         data = {}
         data['author'] = author
@@ -875,9 +875,11 @@ class TracStatsPlugin(Component):
                           'percent': '%.2f' % (100 * v[0] / total)})
         data['byauthor'] = stats
 
+        __where = where.replace('where %s > %s' % (SECONDS, since), '')
+        __where = __where.replace('and %s > %s' % (SECONDS, since), '')
         cursor.execute("""
         select name, %s """ % SECONDS + """
-        from wiki 
+        from wiki """ + __where + """
         order by 2 asc
         """)
         history = cursor.fetchall()
@@ -1056,12 +1058,15 @@ class TracStatsPlugin(Component):
 
         stats = []
         if not req.args.get('author', ''):
+            __where = where.replace('where %s > %s' % (SECONDS, since), '')
+            __where = __where.replace('and %s > %s' % (SECONDS, since), '')
             cursor.execute("""\
             select id, %s, 'none' as oldvalue, 'new' as newvalue
-            from ticket """ % SECONDS + """
+            from ticket """ % SECONDS + __where + """
             union
             select ticket, %s, oldvalue, newvalue
-            from ticket_change where field = 'status' """  % SECONDS)
+            from ticket_change where field = 'status' """  % SECONDS +
+                            __where.replace('where', 'and'))
             rows = cursor.fetchall()
             d = {}
             opened = 0
