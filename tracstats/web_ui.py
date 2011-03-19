@@ -103,21 +103,25 @@ class TracStatsPlugin(Component):
                 now = time.time()
                 months, = m.groups()
                 ago = (24 * 60 * 60 * 30 * int(months))
-                where.append('%s > %s' % (SECONDS, now - ago))
+                since = now - ago
+                where.append('%s > %s' % (SECONDS, since))
             elif w is not None:
                 now = time.time()
                 weeks, = w.groups()
                 ago = (24 * 60 * 60 * 7 * int(weeks))
-                where.append('%s > %s' % (SECONDS, now - ago))
+                since = now - ago
+                where.append('%s > %s' % (SECONDS, since))
             elif d is not None:
                 now = time.time()
                 days, = d.groups()
                 ago = (24 * 60 * 60 * int(days))
-                where.append('%s > %s' % (SECONDS, now - ago))
+                since = now - ago
+                where.append('%s > %s' % (SECONDS, since))
         if where:
             where = 'where ' + ' and '.join(where)
         else:
             where = ''
+            since = 0
 
         data = {}
         data['author'] = author
@@ -165,12 +169,12 @@ class TracStatsPlugin(Component):
 
         elif path == '/wiki':
             data['title'] = 'Wiki ' + (author and (' (%s)' % author))
-            result = self._process_wiki(req, cursor, where, data)
+            result = self._process_wiki(req, cursor, where, since, data)
             cursor.close()
 
         elif path == '/tickets':
             data['title'] = 'Tickets' + (author and (' (%s)' % author))
-            result = self._process_tickets(req, cursor, where, data)
+            result = self._process_tickets(req, cursor, where, since, data)
             cursor.close()
 
         else:
@@ -809,7 +813,7 @@ class TracStatsPlugin(Component):
         return 'code.html', data, None
 
 
-    def _process_wiki(self, req, cursor, where, data):
+    def _process_wiki(self, req, cursor, where, since, data):
 
         cursor.execute("""
         select min(%s),
@@ -873,7 +877,7 @@ class TracStatsPlugin(Component):
 
         cursor.execute("""
         select name, %s """ % SECONDS + """
-        from wiki """ + where + """
+        from wiki 
         order by 2 asc
         """)
         history = cursor.fetchall()
@@ -884,12 +888,13 @@ class TracStatsPlugin(Component):
             total = set()
             for name, t in history:
                 total.add(name)
-                d[int(t * 1000)] = len(total)
+                d[int(t)] = len(total)
             stats = []
             steps = max(len(d) / 10, 1)
             for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
-                stats.append({'x': k, 
-                              'y': v,})
+                if k > since:
+                    stats.append({'x': k * 1000, 
+                                  'y': v,})
         data['history'] = stats
 
         d = {}
@@ -944,7 +949,7 @@ class TracStatsPlugin(Component):
         return 'wiki.html', data, None
 
 
-    def _process_tickets(self, req, cursor, where, data):
+    def _process_tickets(self, req, cursor, where, since, data):
 
         cursor.execute("""
         select
@@ -1053,11 +1058,10 @@ class TracStatsPlugin(Component):
         if not req.args.get('author', ''):
             cursor.execute("""\
             select id, %s, 'none' as oldvalue, 'new' as newvalue
-            from ticket """ % SECONDS + where + """
+            from ticket """ % SECONDS + """
             union
             select ticket, %s, oldvalue, newvalue
-            from ticket_change where field = 'status' """  % SECONDS +
-                           where.replace('where', 'and'))
+            from ticket_change where field = 'status' """  % SECONDS)
             rows = cursor.fetchall()
             d = {}
             opened = 0
@@ -1071,12 +1075,13 @@ class TracStatsPlugin(Component):
                     opened += 1
                 elif newvalue == "closed" and oldvalue != "closed":
                     opened -= 1
-                d[int(t * 1000)] = (opened, accepted)
+                d[int(t)] = (opened, accepted)
             steps = max(len(d) / 250, 1)
             for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
-                stats.append({'x': k,
-                              'opened': v[0],
-                              'accepted': v[1],})
+                if k > since:
+                    stats.append({'x': k * 1000,
+                                  'opened': v[0],
+                                  'accepted': v[1],})
         data['history'] = stats
 
         cursor.execute("""\
