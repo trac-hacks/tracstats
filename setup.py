@@ -1,17 +1,27 @@
 #!/usr/bin/env python
 
+import os.path
 from setuptools import setup, find_packages
 
-PACKAGE = 'TracStats'
-VERSION = '0.4'
+# Utility function to read the README file.  
+def read(fname):
+    return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(
-    name = PACKAGE,
-    version = VERSION,
-    description = "A plugin for project statistics",
-    author = "mrjbq7",
+    name = 'TracStats',
+    version = '0.4',
+    description = "A Trac plugin for project statistics",
+    long_description = read('README'),
+    author = "John Benediktsson",
+    author_email = 'mrjbq7@gmail.com',
     url = "http://github.com/mrjbq7/tracstats",
-    packages=find_packages(exclude=['ez_setup', '*.tests*']),
+    download_url = "https://github.com/mrjbq7/tracstats/zipball/master",
+    packages=['tracstats'],
+    classifiers = [
+        "Development Status :: 4 - Beta",
+        "Framework :: Trac",
+        "License :: OSI Approved :: BSD License",
+    ],
     package_data={
         'tracstats': [
             'htdocs/*.css',
@@ -27,4 +37,3 @@ setup(
         ]
     }
 )
-
