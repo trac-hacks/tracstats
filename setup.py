@@ -3,7 +3,7 @@
 import os.path
 from setuptools import setup, find_packages
 
-# Utility function to read the README file.  
+# Utility function to read the README file.
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
@@ -15,7 +15,7 @@ setup(
     author = "John Benediktsson",
     author_email = 'mrjbq7@gmail.com',
     url = "http://github.com/mrjbq7/tracstats",
-    download_url = "https://github.com/mrjbq7/tracstats/zipball/master#egg=TracStats-0.4",
+    download_url = "http://github.com/mrjbq7/tracstats/zipball/master#egg=TracStats-0.4",
     packages=['tracstats'],
     classifiers = [
         "Development Status :: 4 - Beta",
