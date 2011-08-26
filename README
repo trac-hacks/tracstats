@@ -9,7 +9,7 @@ Description
 The TracStats project is a plugin for the 'trac' project management tool.
 
 The TracStats plugin adds a "Stats" tab to the trac project. Underneath this
-tab can be found statistics about subversion, wiki, and ticket system.
+tab can be found statistics about changesets, wiki pages, and tickets.
 
 Some features include:
 
