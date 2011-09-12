@@ -145,7 +145,7 @@ class TracStatsPlugin(Component):
         add_stylesheet(req, 'stats/common.css')
 
         # Include javascript libraries
-        add_script(req, 'stats/jquery-1.4.3.min.js')
+        add_script(req, 'stats/jquery-1.6.3.min.js')
         add_script(req, 'stats/jquery.flot.min.js')
         add_script(req, 'stats/jquery.tablesorter.min.js')
         add_script(req, 'stats/jquery.sparkline.min.js')
@@ -1017,14 +1017,15 @@ class TracStatsPlugin(Component):
         data['byauthor'] = stats
 
         cursor.execute("""\
-        select t.component, count(distinct t.id), count(distinct open.id)
+        select t.component, count(distinct t.id), open.total
         from ticket t
-        join ticket open using (component)
-        where (open.resolution is null or length(open.resolution) = 0) """ +
-                       where.replace('where',
-                                     'and').replace('time',
-                                                    't.time').replace('author',
-                                                                      't.reporter')+ """
+        join (
+              select component, count(distinct id) as total
+              from ticket
+              where (resolution is null or length(resolution) = 0) """ +
+              where.replace('where', 'and').replace('author', 'reporter') + """
+        ) as open using (component) """ +
+        where.replace('time', 't.time').replace('author', 't.reporter') + """
         group by 1 order by 2 desc
         """)
         rows = cursor.fetchall()
@@ -1037,14 +1038,15 @@ class TracStatsPlugin(Component):
         data['bycomponent'] = stats
 
         cursor.execute("""\
-        select t.milestone, count(distinct t.id), count(distinct open.id)
+        select t.milestone, count(distinct t.id), open.total
         from ticket t
-        join ticket open using (milestone)
-        where (open.resolution is null or length(open.resolution) = 0) """ +
-                       where.replace('where',
-                                     'and').replace('time',
-                                                    't.time').replace('author',
-                                                                      't.reporter')+ """
+        join (
+              select milestone, count(distinct id) as total
+              from ticket
+              where (resolution is null or length(resolution) = 0) """ +
+              where.replace('where', 'and').replace('author', 'reporter') + """
+        ) as open using (milestone) """ +
+        where.replace('time', 't.time').replace('author', 't.reporter') + """
         group by 1 order by 2 desc
         """)
         rows = cursor.fetchall()
