@@ -1,4 +1,3 @@
-
 # stdlib imports
 import datetime
 import locale
@@ -1024,9 +1023,10 @@ class TracStatsPlugin(Component):
               from ticket
               where (resolution is null or length(resolution) = 0) """ +
               where.replace('where', 'and').replace('author', 'reporter') + """
+              group by component
         ) as open using (component) """ +
         where.replace('time', 't.time').replace('author', 't.reporter') + """
-        group by 1 order by 2 desc
+        group by t.component, open.total order by count desc
         """)
         rows = cursor.fetchall()
         stats = []
@@ -1045,9 +1045,10 @@ class TracStatsPlugin(Component):
               from ticket
               where (resolution is null or length(resolution) = 0) """ +
               where.replace('where', 'and').replace('author', 'reporter') + """
+              group by milestone
         ) as open using (milestone) """ +
         where.replace('time', 't.time').replace('author', 't.reporter') + """
-        group by 1 order by 2 desc
+        group by t.milestone, open.total order by count desc
         """)
         rows = cursor.fetchall()
         stats = []
