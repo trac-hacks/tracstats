@@ -1023,10 +1023,10 @@ class TracStatsPlugin(Component):
               from ticket
               where (resolution is null or length(resolution) = 0) """ +
               where.replace('where', 'and').replace('author', 'reporter') + """
-              group by component
+              group by 1
         ) as open using (component) """ +
         where.replace('time', 't.time').replace('author', 't.reporter') + """
-        group by t.component, open.total order by count desc
+        group by 1, 3 order by 2 desc
         """)
         rows = cursor.fetchall()
         stats = []
@@ -1045,10 +1045,10 @@ class TracStatsPlugin(Component):
               from ticket
               where (resolution is null or length(resolution) = 0) """ +
               where.replace('where', 'and').replace('author', 'reporter') + """
-              group by milestone
+              group by 1
         ) as open using (milestone) """ +
         where.replace('time', 't.time').replace('author', 't.reporter') + """
-        group by t.milestone, open.total order by count desc
+        group by 1, 3 order by 2 desc
         """)
         rows = cursor.fetchall()
         stats = []
