@@ -55,7 +55,11 @@ Installation
 
 The TracStats plugin can be installed using standard::
 
-    python setup.py install
+   $ easy_install tracstats
+
+Or, grab the sources and build using::
+ 
+   $ python setup.py install
 
 
 Configuration
