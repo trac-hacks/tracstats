@@ -33,14 +33,14 @@ else:
 # repositories.  Where the "rev" field was previously unique,
 # the "(repos,rev)" fields are now unique.  Doing it this way
 # is a big performance boost.
-if trac.__version__.startswith('0.12'):
+if any(trac.__version__.startswith(s) for s in ('0.12','0.13','1.')):
     USING = "on r.repos = nc.repos and r.rev = nc.rev"
 else:
     USING = "using (rev)"
 
 # In version 0.12, support for multiple repositories was
 # added.  We use the reponame to generate proper changeset links.
-if trac.__version__.startswith('0.12'):
+if any(trac.__version__.startswith(s) for s in ('0.12','0.13','1.')):
     REPOS = 'r.repos'
 else:
     REPOS = "'' as repos"
