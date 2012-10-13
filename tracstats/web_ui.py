@@ -24,7 +24,7 @@ from trac.versioncontrol.api import RepositoryManager
 # In version 0.12, the time field in the database was changed
 # from seconds to microseconds.  This allows us to support both
 # 0.11 and 0.12 with the same piece of code.  It could be prettier.
-if trac.__version__.startswith('0.12'):
+if any(trac.__version__.startswith(s) for s in ('0.12','0.13','1.')):
     SECONDS = 'time / 1000000'
 else:
     SECONDS = 'time'
