@@ -321,9 +321,8 @@ class TracStatsPlugin(Component):
         rows = cursor.fetchall()
 
         stats = []
-        for i, (author, commits) in enumerate(rows):
-            stats.append({'id': i,
-                          'name': author,
+        for author, commits in rows:
+            stats.append({'name': author,
                           'url': req.href.stats("code", author=author),})
         data['byauthors'] = stats
 
@@ -520,7 +519,7 @@ class TracStatsPlugin(Component):
                     d[author] = { week : 1 }
 
         stats = []
-        for author in sorted(set(author for _, _, author, _, _ in revisions)):
+        for i, author in enumerate(sorted(set(author for _, _, author, _, _ in revisions))):
             commits = len(set(x[0] for x in revisions if x[2] == author))
             mintime = min(x[1] for x in revisions if x[2] == author)
             maxtime = max(x[1] for x in revisions if x[2] == author)
@@ -545,7 +544,8 @@ class TracStatsPlugin(Component):
                 if week < 0:
                     year -= 1
                     week = 52
-            stats.append({'name': author, 
+            stats.append({'id': i,
+                          'name': author,
                           'url': req.href.stats("code", author=author),
                           'commits': commits,
                           'rate': '%.2f' % (rate and float(rate) or 0),
