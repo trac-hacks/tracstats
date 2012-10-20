@@ -247,13 +247,13 @@ $(function () {
 <tr>
 <td width="150"><a href="${stat.url}">${stat.name}</a></td>
 <td width="420" align="right">
-<span id="${stat.name}weeks">Loading...</span>
+<span id="author${stat.id}">Loading...</span>
 <script language="javascript" type="text/javascript">
 $(document).ready(function()
     {
         var values = [<py:for each="week in stat.weeks">${week.total}<py:if 
                               test="week != stat.weeks[-1]">,</py:if></py:for>];
-        $("[id=${stat.name}weeks]").sparkline(values, {
+        $("[id=author${stat.id}]").sparkline(values, {
                                 type: "bar",
                                 barColor: "lightgray",
                                 barWidth: 7,

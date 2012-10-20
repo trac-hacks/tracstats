@@ -321,8 +321,9 @@ class TracStatsPlugin(Component):
         rows = cursor.fetchall()
 
         stats = []
-        for author, commits in rows:
-            stats.append({'name': author,
+        for i, (author, commits) in enumerate(rows):
+            stats.append({'id': i,
+                          'name': author,
                           'url': req.href.stats("code", author=author),})
         data['byauthors'] = stats
 
