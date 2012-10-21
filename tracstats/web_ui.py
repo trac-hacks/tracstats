@@ -93,7 +93,7 @@ class TracStatsPlugin(Component):
 
         where = []
         if author:
-            where.append("author = '%s'" % author)
+            where.append("author = '%s'" % author.replace("'", "''"))
         since = 0
         if last:
             m = re.match('(\d+)m', last)
