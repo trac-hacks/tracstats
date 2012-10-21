@@ -24,7 +24,7 @@ from trac.versioncontrol.api import RepositoryManager
 # In version 0.12, the time field in the database was changed
 # from seconds to microseconds.  This allows us to support both
 # 0.11 and 0.12 with the same piece of code.  It could be prettier.
-if any(trac.__version__.startswith(s) for s in ('0.12','0.13','1.')):
+if trac.__version__ > '0.12':
     SECONDS = 'time / 1000000'
 else:
     SECONDS = 'time'
@@ -33,14 +33,14 @@ else:
 # repositories.  Where the "rev" field was previously unique,
 # the "(repos,rev)" fields are now unique.  Doing it this way
 # is a big performance boost.
-if any(trac.__version__.startswith(s) for s in ('0.12','0.13','1.')):
+if trac.__version__ > '0.12':
     USING = "on r.repos = nc.repos and r.rev = nc.rev"
 else:
     USING = "using (rev)"
 
 # In version 0.12, support for multiple repositories was
 # added.  We use the reponame to generate proper changeset links.
-if any(trac.__version__.startswith(s) for s in ('0.12','0.13','1.')):
+if trac.__version__ > '0.12':
     REPOS = 'r.repos'
 else:
     REPOS = "'' as repos"
@@ -286,7 +286,7 @@ class TracStatsPlugin(Component):
 
         # In version 0.12, support for multiple repositories was
         # added.  We use the reponame to generate proper changeset links.
-        if any(trac.__version__.startswith(s) for s in ('0.12','0.13','1.')):
+        if trac.__version__ > '0.12':
             cursor.execute("""
             select id, value
             from repository
@@ -435,7 +435,7 @@ class TracStatsPlugin(Component):
 
         # In version 0.12, support for multiple repositories was
         # added.  We use the reponame to generate proper changeset links.
-        if any(trac.__version__.startswith(s) for s in ('0.12','0.13','1.')):
+        if trac.__version__ > '0.12':
             cursor.execute("""
             select id, value
             from repository
