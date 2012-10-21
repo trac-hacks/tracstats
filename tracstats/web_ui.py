@@ -286,7 +286,7 @@ class TracStatsPlugin(Component):
 
         # In version 0.12, support for multiple repositories was
         # added.  We use the reponame to generate proper changeset links.
-        if trac.__version__.startswith('0.12'):
+        if any(trac.__version__.startswith(s) for s in ('0.12','0.13','1.')):
             cursor.execute("""
             select id, value
             from repository
@@ -435,7 +435,7 @@ class TracStatsPlugin(Component):
 
         # In version 0.12, support for multiple repositories was
         # added.  We use the reponame to generate proper changeset links.
-        if trac.__version__.startswith('0.12'):
+        if any(trac.__version__.startswith(s) for s in ('0.12','0.13','1.')):
             cursor.execute("""
             select id, value
             from repository
