@@ -296,7 +296,6 @@ class TracStatsPlugin(Component):
             repositories = {}
 
         now = time.time()
-        now = 0
         start = now - (30 * 24 * 60 * 60)
         if root:
             cursor.execute("""
