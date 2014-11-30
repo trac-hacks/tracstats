@@ -144,7 +144,6 @@ class TracStatsPlugin(Component):
         add_stylesheet(req, 'stats/common.css')
 
         # Include javascript libraries
-        add_script(req, 'stats/jquery-1.6.3.min.js')
         add_script(req, 'stats/jquery.flot.min.js')
         add_script(req, 'stats/jquery.tablesorter.min.js')
         add_script(req, 'stats/jquery.sparkline.min.js')
