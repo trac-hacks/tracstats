@@ -128,9 +128,6 @@ class TracStatsPlugin(Component):
         data['last_12m'] = req.href.stats(path, last='12m', author=author)
         data['last_all'] = req.href.stats(path, author=author)
 
-        db = self.env.get_db_cnx()
-        cursor = db.cursor()
-
         db_str = self.env.config.get('trac', 'database')
         db_type, db_path = db_str.split(':', 1)
         assert db_type in ('sqlite', 'mysql', 'postgres'), \
@@ -155,29 +152,32 @@ class TracStatsPlugin(Component):
         add_ctxtnav(req, 'Wiki', req.href.stats('wiki'))
         add_ctxtnav(req, 'Tickets', req.href.stats('tickets'))
 
-        if path == '/':
-            data['title'] = 'Stats'
-            result = self._process(req, cursor, where, data)
-            cursor.close()
+        with self.env.db_transaction as db:
+            cursor = db.cursor()
 
-        elif path == '/code':
-            data['title'] = 'Code' + (author and (' (%s)' % author))
-            result = self._process_code(req, cursor, where, data)
-            cursor.close()
+            if path == '/':
+                data['title'] = 'Stats'
+                result = self._process(req, cursor, where, data)
+                cursor.close()
 
-        elif path == '/wiki':
-            data['title'] = 'Wiki ' + (author and (' (%s)' % author))
-            result = self._process_wiki(req, cursor, where, since, data)
-            cursor.close()
+            elif path == '/code':
+                data['title'] = 'Code' + (author and (' (%s)' % author))
+                result = self._process_code(req, cursor, where, data)
+                cursor.close()
 
-        elif path == '/tickets':
-            data['title'] = 'Tickets' + (author and (' (%s)' % author))
-            result = self._process_tickets(req, cursor, where, since, data)
-            cursor.close()
+            elif path == '/wiki':
+                data['title'] = 'Wiki ' + (author and (' (%s)' % author))
+                result = self._process_wiki(req, cursor, where, since, data)
+                cursor.close()
 
-        else:
-            cursor.close()
-            raise ValueError, "unknown path '%s'" % path
+            elif path == '/tickets':
+                data['title'] = 'Tickets' + (author and (' (%s)' % author))
+                result = self._process_tickets(req, cursor, where, since, data)
+                cursor.close()
+
+            else:
+                cursor.close()
+                raise ValueError, "unknown path '%s'" % path
 
         # Clean the unicode values for Genshi
         template_name, data, content_type = result
