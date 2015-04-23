@@ -4,6 +4,7 @@ import locale
 import re
 import string
 import time
+from contextlib import contextmanager
 from math import floor, log
 from operator import itemgetter
 
@@ -44,6 +45,17 @@ if trac.__version__ >= '0.12':
     REPOS = 'r.repos'
 else:
     REPOS = "'' as repos"
+
+# In version 1.0, support for a better database API was added.
+# This provides a backwards compatible way to perform queries
+# on older versions of Trac.
+@contextmanager
+def old_db_query(env):
+    db = env.get_db_cnx()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 class TracStatsPlugin(Component):
@@ -152,7 +164,11 @@ class TracStatsPlugin(Component):
         add_ctxtnav(req, 'Wiki', req.href.stats('wiki'))
         add_ctxtnav(req, 'Tickets', req.href.stats('tickets'))
 
-        with self.env.db_query as db:
+        if hasattr(self.env, 'db_query'):
+            db_query = self.env.db_query
+        else:
+            db_query = old_db_query(self.env)
+        with db_query as db:
             cursor = db.cursor()
 
             if path == '/':
