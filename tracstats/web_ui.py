@@ -152,31 +152,26 @@ class TracStatsPlugin(Component):
         add_ctxtnav(req, 'Wiki', req.href.stats('wiki'))
         add_ctxtnav(req, 'Tickets', req.href.stats('tickets'))
 
-        with self.env.db_transaction as db:
+        with self.env.db_query as db:
             cursor = db.cursor()
 
             if path == '/':
                 data['title'] = 'Stats'
                 result = self._process(req, cursor, where, data)
-                cursor.close()
 
             elif path == '/code':
                 data['title'] = 'Code' + (author and (' (%s)' % author))
                 result = self._process_code(req, cursor, where, data)
-                cursor.close()
 
             elif path == '/wiki':
                 data['title'] = 'Wiki ' + (author and (' (%s)' % author))
                 result = self._process_wiki(req, cursor, where, since, data)
-                cursor.close()
 
             elif path == '/tickets':
                 data['title'] = 'Tickets' + (author and (' (%s)' % author))
                 result = self._process_tickets(req, cursor, where, since, data)
-                cursor.close()
 
             else:
-                cursor.close()
                 raise ValueError, "unknown path '%s'" % path
 
         # Clean the unicode values for Genshi
