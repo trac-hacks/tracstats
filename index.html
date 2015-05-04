@@ -2,9 +2,9 @@
 <html>
 
   <head>
-    <meta charset='utf-8' />
-    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
-    <meta name="description" content="TracStats : Project and source code statistics plugin for Trac." />
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="TracStats : Project and source code statistics plugin for Trac.">
 
     <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
@@ -16,22 +16,23 @@
     <!-- HEADER -->
     <div id="header_wrap" class="outer">
         <header class="inner">
-          <a id="forkme_banner" href="https://github.com/mrjbq7/tracstats">Fork Me on GitHub</a>
+          <a id="forkme_banner" href="https://github.com/mrjbq7/tracstats">View on GitHub</a>
 
           <h1 id="project_title">TracStats</h1>
           <h2 id="project_tagline">Project and source code statistics plugin for Trac.</h2>
 
-          <section id="downloads">
-            <a class="zip_download_link" href="https://github.com/mrjbq7/tracstats/zipball/master">Download this project as a .zip file</a>
-            <a class="tar_download_link" href="https://github.com/mrjbq7/tracstats/tarball/master">Download this project as a tar.gz file</a>
-          </section>
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/mrjbq7/tracstats/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/mrjbq7/tracstats/tarball/master">Download this project as a tar.gz file</a>
+            </section>
         </header>
     </div>
 
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-        <h1>TracStats</h1>
+        <h1>
+<a id="tracstats" class="anchor" href="#tracstats" aria-hidden="true"><span class="octicon octicon-link"></span></a>TracStats</h1>
 
 <p>The TracStats project is a plugin for the 'trac' project management tool.</p>
 
@@ -78,17 +79,20 @@ within the repository.</p></li>
 </ul>
 </li>
 <li><p>Drill down by author or path within the repository for more information.</p></li>
-</ul><p>The TracStats plugin supports Trac installations with SQLite, MySQL, and
+</ul>
+
+<p>The TracStats plugin supports Trac installations with SQLite, MySQL, and
 PostgreSQL database backends.</p>
 
 <p>The TracStats plugin has been tested with Subversion, Mercurial, and Git
 version control systems.</p>
 
-<h2>Installation</h2>
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
 
 <p>The TracStats plugin can be installed using standard:</p>
 
-<pre><code>$ easy_install tracstats
+<pre><code>$ pip install tracstats
 </code></pre>
 
 <p>Or, grab the sources and build using:</p>
@@ -96,42 +100,34 @@ version control systems.</p>
 <pre><code>$ python setup.py install
 </code></pre>
 
-<h2>Configuration</h2>
+<h2>
+<a id="configuration" class="anchor" href="#configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Configuration</h2>
 
 <p>It is configured in the <code>trac.ini</code> file by enabling and configuring:</p>
 
-<div class="highlight">
-<pre><span class="k">[components]</span>
-<span class="na">tracstats.*</span> <span class="o">=</span> <span class="s">enabled</span>
-</pre>
-</div>
+<div class="highlight highlight-ini"><pre><span class="pl-en">[components]</span>
+tracstats.* = enabled</pre></div>
 
+<div class="highlight highlight-python"><pre><span class="pl-k">&gt;&gt;&gt;</span> <span class="pl-k">print</span>(<span class="pl-s"><span class="pl-pds">"</span>Hello, World<span class="pl-pds">"</span></span>)</pre></div>
 
 <p>The <code>STATS_VIEW</code> permission is used to control access to the statistics pages.</p>
 
 <p>In addition, an optional "project root" within your repository can be
 configured as the base for all projects and source code statistics:</p>
 
-<div class="highlight">
-<pre><span class="k">[stats]</span>
-<span class="na">root</span> <span class="o">=</span> <span class="s">path/to/projects</span>
-</pre>
-</div>
+<div class="highlight highlight-ini"><pre><span class="pl-en">[stats]</span>
+<span class="pl-k">root</span> = path/to/projects</pre></div>
 
-
-<h2>Troubleshooting</h2>
+<h2>
+<a id="troubleshooting" class="anchor" href="#troubleshooting" aria-hidden="true"><span class="octicon octicon-link"></span></a>Troubleshooting</h2>
 
 <p>If you use Git (i.e. the GitPlugin for Trac) and are not able to see any of
 the code statistics, you likely need to configure it to cache the repository
 to make it work:</p>
 
-<div class="highlight">
-<pre><span class="k">[git]</span>
-<span class="na">cached_repository</span> <span class="o">=</span> <span class="s">true</span>
-<span class="na">persistent_cache</span> <span class="o">=</span> <span class="s">true</span>
-</pre>
-</div>
-
+<div class="highlight highlight-ini"><pre><span class="pl-en">[git]</span>
+<span class="pl-k">cached_repository</span> = true
+<span class="pl-k">persistent_cache</span> = true</pre></div>
 
 <p>You might need to run <code>trac-admin &lt;project-env&gt; repository resync &lt;reponame&gt;</code> after the change.</p>
       </section>
@@ -141,7 +137,7 @@ to make it work:</p>
     <div id="footer_wrap" class="outer">
       <footer class="inner">
         <p class="copyright">TracStats maintained by <a href="https://github.com/mrjbq7">mrjbq7</a></p>
-        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
       </footer>
     </div>
 
