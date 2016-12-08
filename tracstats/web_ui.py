@@ -154,6 +154,7 @@ class TracStatsPlugin(Component):
 
         # Include javascript libraries
         add_script(req, 'stats/jquery.flot.min.js')
+        add_script(req, 'stats/jquery.flot.time.min.js')
         add_script(req, 'stats/jquery.tablesorter.min.js')
         add_script(req, 'stats/jquery.sparkline.min.js')
         add_script(req, 'stats/excanvas.compiled.js')
