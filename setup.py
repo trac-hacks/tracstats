@@ -9,13 +9,13 @@ def read(fname):
 
 setup(
     name = 'TracStats',
-    version = '0.5',
+    version = '0.6',
     description = "A Trac plugin for project statistics",
     long_description = read('README.md'),
     author = "John Benediktsson",
     author_email = 'mrjbq7@gmail.com',
     url = "http://github.com/trac-hacks/tracstats",
-    download_url = "http://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.5",
+    download_url = "http://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.6",
     packages=['tracstats'],
     classifiers = [
         "Development Status :: 4 - Beta",
@@ -36,5 +36,5 @@ setup(
             'tracstats.web_ui = tracstats.web_ui',
         ]
     },
-    dependency_links = ['http://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.5']
+    dependency_links = ['http://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.6']
 )
