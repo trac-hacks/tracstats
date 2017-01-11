@@ -11,7 +11,7 @@ setup(
     name = 'TracStats',
     version = '0.5',
     description = "A Trac plugin for project statistics",
-    long_description = read('README'),
+    long_description = read('README.md'),
     author = "John Benediktsson",
     author_email = 'mrjbq7@gmail.com',
     url = "http://github.com/mrjbq7/tracstats",
