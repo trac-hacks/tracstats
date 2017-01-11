@@ -1,12 +1,7 @@
-===============
-   TracStats
-===============
+# TracStats
 
-
-Description
-===========
-
-The TracStats project is a plugin for the 'trac' project management tool.
+The TracStats project is a plugin for the [trac](https://trac.edgewall.org/)
+project management tool.
 
 The TracStats plugin adds a "Stats" tab to the trac project. Underneath this
 tab can be found statistics about changesets, wiki pages, and tickets.
@@ -49,46 +44,51 @@ PostgreSQL database backends.
 The TracStats plugin has been tested with Subversion, Mercurial, and Git
 version control systems.
 
+## Installation
 
-Installation
-============
+The TracStats plugin can be installed using standard:
 
-The TracStats plugin can be installed using standard::
+```
+$ pip install tracstats
+```
 
-   $ easy_install tracstats
+Or, grab the sources and build using:
 
-Or, grab the sources and build using::
- 
-   $ python setup.py install
+```
+$ python setup.py install
+```
 
+## Configuration
 
-Configuration
-=============
+It is configured in the ``trac.ini`` file by enabling and configuring:
 
-It is configured in the ``trac.ini`` file by enabling and configuring::
+```
+[components]
+tracstats.* = enabled
+```
 
-    [components]
-    tracstats.* = enabled
-
-The ``STATS_VIEW`` permission is used to control access to the statistics pages.
+The ``STATS_VIEW`` permission is used to control access to the statistics
+pages.
 
 In addition, an optional "project root" within your repository can be
-configured as the base for all projects and source code statistics::
+configured as the base for all projects and source code statistics:
 
-    [stats]
-    root = path/to/projects
+```
+[stats]
+root = path/to/projects
+```
 
-
-Troubleshooting
-===============
+## Troubleshooting
 
 If you use Git (i.e. the GitPlugin for Trac) and are not able to see any of
 the code statistics, you likely need to configure it to cache the repository
-to make it work::
+to make it work:
 
-    [git]
-    cached_repository = true
-    persistent_cache = true
+```
+[git]
+cached_repository = true
+persistent_cache = true
+```
 
 You might need to run ``trac-admin <project-env> repository resync
 <reponame>`` after the change.
