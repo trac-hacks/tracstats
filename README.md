@@ -62,7 +62,7 @@ $ python setup.py install
 
 It is configured in the ``trac.ini`` file by enabling and configuring:
 
-```
+```ini
 [components]
 tracstats.* = enabled
 ```
@@ -73,7 +73,7 @@ pages.
 In addition, an optional "project root" within your repository can be
 configured as the base for all projects and source code statistics:
 
-```
+```ini
 [stats]
 root = path/to/projects
 ```
@@ -84,7 +84,7 @@ If you use Git (i.e. the GitPlugin for Trac) and are not able to see any of
 the code statistics, you likely need to configure it to cache the repository
 to make it work:
 
-```
+```ini
 [git]
 cached_repository = true
 persistent_cache = true
