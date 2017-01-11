@@ -14,8 +14,8 @@ setup(
     long_description = read('README.md'),
     author = "John Benediktsson",
     author_email = 'mrjbq7@gmail.com',
-    url = "http://github.com/mrjbq7/tracstats",
-    download_url = "http://github.com/mrjbq7/tracstats/zipball/master#egg=TracStats-0.5",
+    url = "http://github.com/trac-hacks/tracstats",
+    download_url = "http://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.5",
     packages=['tracstats'],
     classifiers = [
         "Development Status :: 4 - Beta",
@@ -36,5 +36,5 @@ setup(
             'tracstats.web_ui = tracstats.web_ui',
         ]
     },
-    dependency_links = ['http://github.com/mrjbq7/tracstats/zipball/master#egg=TracStats-0.5']
+    dependency_links = ['http://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.5']
 )
