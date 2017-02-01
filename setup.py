@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os.path
-from setuptools import setup, find_packages
+from distutils.core import setup
 
 # Utility function to read the README file.
 def read(fname):
@@ -9,7 +9,7 @@ def read(fname):
 
 setup(
     name = 'TracStats',
-    version = '0.6',
+    version = '0.6.1',
     description = "A Trac plugin for project statistics",
     long_description = read('README.md'),
     author = "John Benediktsson",
