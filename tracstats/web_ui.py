@@ -189,12 +189,12 @@ class TracStatsPlugin(Component):
                 result = self._process_tickets(req, cursor, where, since, data)
 
             else:
-                raise ValueError, "unknown path '%s'" % path
+                raise ValueError("unknown path '%s'" % path)
 
         # Clean the unicode values for Genshi
         template_name, data, content_type = result
         new_data = {}
-        for k, v in data.iteritems():
+        for k, v in data.items():
             if isinstance(v, str):
                 new_data[k] = to_unicode(v)
             else:
@@ -283,7 +283,7 @@ class TracStatsPlugin(Component):
         rows = cursor.fetchall()
 
         d = dict(rows)
-        year, week = map(int, time.strftime('%Y %W').split())
+        year, week = list(map(int, time.strftime('%Y %W').split()))
         stats = []
         while len(stats) < 52:
             name = '%04d-%02d' % (year, week)
@@ -365,7 +365,7 @@ class TracStatsPlugin(Component):
             except KeyError:
                 d[path] = 1
         stats = []
-        for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
+        for k, v in sorted(iter(d.items()), key=itemgetter(1), reverse=True)[:10]:
             repos, path = k
             reponame = repositories.get(repos, '')
             if reponame:
@@ -385,9 +385,9 @@ class TracStatsPlugin(Component):
                 d[project] += 1
             except KeyError:
                 d[project] = 1
-        total = float(sum(d.itervalues()))
+        total = float(sum(d.values()))
         stats = []
-        for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
+        for k, v in sorted(iter(d.items()), key=itemgetter(1), reverse=True)[:10]:
             repos, project = k
             reponame = repositories.get(repos, '')
             if reponame:
@@ -537,7 +537,7 @@ class TracStatsPlugin(Component):
             change = sum(1 for x in changes if x[4] == author)
             paths = len(set(x[2] for x in changes if x[4] == author))
 
-            year, week = map(int, time.strftime('%Y %W').split())
+            year, week = list(map(int, time.strftime('%Y %W').split()))
             weeks = []
             while len(weeks) < 52:
                 name = '%04d-%02d' % (year, week)
@@ -586,7 +586,7 @@ class TracStatsPlugin(Component):
                 d[int(times[rev] * 1000)] = len(total)
             stats = []
             steps = max(len(d) / 50, 1)
-            for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
+            for k, v in sorted(iter(d.items()), key=itemgetter(0))[::steps]:
                 stats.append({'x': k, 
                               'y': v,})
         data['totalfiles'] = stats
@@ -598,7 +598,7 @@ class TracStatsPlugin(Component):
             d[int(t * 1000)] = total
         stats = []
         steps = max(len(d) / 50, 1)
-        for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
+        for k, v in sorted(iter(d.items()), key=itemgetter(0))[::steps]:
             stats.append({'x': k, 
                           'y': v,})
         data['totalcommits'] = stats
@@ -611,7 +611,7 @@ class TracStatsPlugin(Component):
             d[int(times[rev] * 1000)] = total
         stats = []
         steps = max(len(d) / 50, 1)
-        for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
+        for k, v in sorted(iter(d.items()), key=itemgetter(0))[::steps]:
             stats.append({'x': k, 
                           'y': v,})
         data['totalchanges'] = stats
@@ -624,9 +624,9 @@ class TracStatsPlugin(Component):
                 d[path] += 1
             except KeyError:
                 d[path] = 1
-        total = float(sum(d.itervalues()))
+        total = float(sum(d.values()))
         stats = []
-        for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
+        for k, v in sorted(iter(d.items()), key=itemgetter(1), reverse=True)[:10]:
             repos, path = k
             reponame = repositories.get(repos, '')
             if reponame:
@@ -645,8 +645,8 @@ class TracStatsPlugin(Component):
                 d[author] = {'A':0,'E':0,'M':0,'C':0,'D':0}
                 d[author][change_type] += 1
         stats = []
-        for k, v in sorted(d.iteritems()):
-            total = sum(v.itervalues())
+        for k, v in sorted(d.items()):
+            total = sum(v.values())
             adds = int(100.0 * v['A'] / total)
             copies = int(100.0 * v['C'] / total)
             deletes = int(100.0 * v['D'] / total)
@@ -673,9 +673,9 @@ class TracStatsPlugin(Component):
                 d[path] += 1
             except KeyError:
                 d[path] = 1
-        total = float(sum(d.itervalues()))
+        total = float(sum(d.values()))
         stats = []
-        for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
+        for k, v in sorted(iter(d.items()), key=itemgetter(1), reverse=True)[:10]:
             repos, path = k
             reponame = repositories.get(repos, '')
             if reponame:
@@ -699,9 +699,9 @@ class TracStatsPlugin(Component):
                     d[ext] += 1
                 except KeyError:
                     d[ext] = 1
-        total = float(sum(d.itervalues()))
+        total = float(sum(d.values()))
         stats = []
-        for k, v in sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:10]:
+        for k, v in sorted(iter(d.items()), key=itemgetter(1), reverse=True)[:10]:
             stats.append({'name': k,
                           'count': v,
                           'percent': '%.2f' % (100 * v / total)})
@@ -721,7 +721,7 @@ class TracStatsPlugin(Component):
             except KeyError:
                 d[project] = [1, set([rev]), set([path])]
         stats = []
-        for k, v in sorted(d.iteritems(), key=lambda x: len(x[0][1]), reverse=True):
+        for k, v in sorted(iter(d.items()), key=lambda x: len(x[0][1]), reverse=True):
             repos, project = k
             reponame = repositories.get(repos, '')
             if reponame:
@@ -741,7 +741,7 @@ class TracStatsPlugin(Component):
             hour = time.strftime('%H:00', time.localtime(t))
             d[hours[hour]] += 1
         stats = []
-        for x, y in sorted(d.iteritems()):
+        for x, y in sorted(d.items()):
             stats.append({'x': x,
                           'y': y,})
         data['byhour'] = stats
@@ -751,7 +751,7 @@ class TracStatsPlugin(Component):
             day = time.strftime('%w', time.localtime(t))
             d[day] += 1
         stats = []
-        for x, y in sorted(d.iteritems()):
+        for x, y in sorted(d.items()):
             stats.append({'x': x, 
                           'y': y,})
         data['byday'] = stats
@@ -775,7 +775,7 @@ class TracStatsPlugin(Component):
                 if mintime not in d:
                     d[mintime] = 0
         stats = []
-        for k, v in sorted(d.iteritems()):
+        for k, v in sorted(d.items()):
             stats.append({'x': int(k * 1000),
                           'y': v})
         data['bymonth'] = stats
@@ -789,7 +789,7 @@ class TracStatsPlugin(Component):
         ignore.update(authors)
         ignore.update(projects)
 
-        delete = dict((ord(k), u' ') for k in '.,;:!?-+/\\()<>{}[]=_~`|0123456789*')
+        delete = dict((ord(k), ' ') for k in '.,;:!?-+/\\()<>{}[]=_~`|0123456789*')
         delete.update(dict((ord(k), None) for k in '\"\''))
 
         d = {}
@@ -803,9 +803,9 @@ class TracStatsPlugin(Component):
                     except KeyError:
                         d[word] = 1
         fonts = ['0.8em', '1.0em', '1.25em', '1.5em', '1.75em', '2.0em']
-        items = sorted(d.iteritems(), key=itemgetter(1), reverse=True)[:200]
-        min_count = items and min(map(itemgetter(1), items)) or 0
-        max_count = items and max(map(itemgetter(1), items)) or 0
+        items = sorted(iter(d.items()), key=itemgetter(1), reverse=True)[:200]
+        min_count = items and min(list(map(itemgetter(1), items))) or 0
+        max_count = items and max(list(map(itemgetter(1), items))) or 0
         stats = []
         for k, v in sorted(items):
              weight = (log(v) - log(min_count)) / max(log(max_count) - log(min_count), 1)
@@ -872,9 +872,9 @@ class TracStatsPlugin(Component):
                 d[author][1].add(name)
             except KeyError:
                 d[author] = [count, set([name])]
-        total = float(sum(x[0] for x in d.values()))
+        total = float(sum(x[0] for x in list(d.values())))
         stats = []
-        for k, v in sorted(d.items(), key=itemgetter(1), reverse=True):
+        for k, v in sorted(list(d.items()), key=itemgetter(1), reverse=True):
             stats.append({'name': k, 
                           'url': req.href.stats("wiki", author=k),
                           'count': v[0],
@@ -900,7 +900,7 @@ class TracStatsPlugin(Component):
                 d[int(t)] = len(total)
             stats = []
             steps = max(len(d) / 250, 1)
-            for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
+            for k, v in sorted(iter(d.items()), key=itemgetter(0))[::steps]:
                 if k > since:
                     stats.append({'x': k * 1000, 
                                   'y': v,})
@@ -914,7 +914,7 @@ class TracStatsPlugin(Component):
                 d[name] = count
         total = float(sum(d.values()))
         stats = []
-        for k, v in sorted(d.items(), key=itemgetter(1), reverse=True)[:10]:
+        for k, v in sorted(list(d.items()), key=itemgetter(1), reverse=True)[:10]:
             stats.append({'name': k, 
                           'url': req.href.wiki(k),
                           'count': v,
@@ -932,7 +932,7 @@ class TracStatsPlugin(Component):
         rows = cursor.fetchall()
         d = dict((name, int(size)) for name, _, size in rows)
         stats = []
-        for k, v in sorted(d.items(), key=itemgetter(1), reverse=True):
+        for k, v in sorted(list(d.items()), key=itemgetter(1), reverse=True):
             stats.append({'name': k, 
                           'url': req.href.wiki(k),
                           'size': v})
@@ -1016,7 +1016,7 @@ class TracStatsPlugin(Component):
         rows = cursor.fetchall()
         d = dict((path, (int(x), int(y))) for path, x, y in rows)
         stats = []
-        for k, v in sorted(d.items(), key=itemgetter(1), reverse=True):
+        for k, v in sorted(list(d.items()), key=itemgetter(1), reverse=True):
             stats.append({'name': k, 
                           'url': req.href.stats("tickets", author=k),
                           'reports': v[0],
@@ -1093,7 +1093,7 @@ class TracStatsPlugin(Component):
                     opened -= 1
                 d[int(t)] = (opened, accepted)
             steps = max(len(d) / 250, 1)
-            for k, v in sorted(d.iteritems(), key=itemgetter(0))[::steps]:
+            for k, v in sorted(iter(d.items()), key=itemgetter(0))[::steps]:
                 if k > since:
                     stats.append({'x': k * 1000,
                                   'opened': v[0],
