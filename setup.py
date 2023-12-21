@@ -12,10 +12,10 @@ setup(
     version = '0.7.0',
     description = "A Trac plugin for project statistics",
     long_description = read('README.md'),
-    author = "John Benediktsson, Drik Stöcker",
+    author = "John Benediktsson, Dirk Stöcker",
     author_email = 'trac@dstoecker.de',
     url = "https://github.com/trac-hacks/tracstats",
-    download_url = "https://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.6.1",
+    download_url = "https://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.7.0",
     packages=['tracstats'],
     classifiers = [
         "Development Status :: 4 - Beta",
@@ -36,5 +36,6 @@ setup(
             'tracstats.web_ui = tracstats.web_ui',
         ]
     },
-    dependency_links = ['http://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.6.1']
+    install_requires=['Trac>=1.6'],
+    dependency_links = ['http://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.7.0']
 )
