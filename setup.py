@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 
 import os.path
-from distutils.core import setup
+from setuptools import setup
 
 # Utility function to read the README file.
 def read(fname):
@@ -9,13 +9,13 @@ def read(fname):
 
 setup(
     name = 'TracStats',
-    version = '0.6.1',
+    version = '0.7.0',
     description = "A Trac plugin for project statistics",
     long_description = read('README.md'),
-    author = "John Benediktsson",
-    author_email = 'mrjbq7@gmail.com',
-    url = "http://github.com/trac-hacks/tracstats",
-    download_url = "http://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.6.1",
+    author = "John Benediktsson, Drik Stöcker",
+    author_email = 'trac@dstoecker.de',
+    url = "https://github.com/trac-hacks/tracstats",
+    download_url = "https://github.com/trac-hacks/tracstats/zipball/master#egg=TracStats-0.6.1",
     packages=['tracstats'],
     classifiers = [
         "Development Status :: 4 - Beta",

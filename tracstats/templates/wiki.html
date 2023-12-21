@@ -1,143 +1,136 @@
-<!DOCTYPE html
-    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:py="http://genshi.edgewall.org/"
-      xmlns:i18n="http://genshi.edgewall.org/i18n"
-      xmlns:xi="http://www.w3.org/2001/XInclude">
-  <xi:include href="layout.html" />
+{# Copyright (C) 2023 Dirk Stöcker
 
-    <head>
-        <title>Wiki Stats <py:if test="author">(${author})</py:if></title>
-    </head>
+  This software is licensed as described in the file COPYING, which
+  you should have received as part of this distribution. The terms
+  are also available at https://trac.edgewall.org/wiki/TracLicense.
+
+  This software consists of voluntary contributions made by many
+  individuals. For the exact contribution history, see the revision
+  history and logs, available at https://trac.edgewall.org/.
+#}
+# extends 'layout.html'
+<html>
+  <head>
+    <title>
+    # block title
+      # if author:
+      ${_("Wiki Stats (%(author)s)" % {'author' : author})}
+      # else:
+      ${_("Wiki Stats")}
+      # endif
+    # endblock title
+    </title>
+  </head>
 
 <body>
-<div id="content" class="wiki">
+# block content
+  <div id="content" class="wiki">
 
-<div class="trac-modifiedby">
+  <div class="trac-modifiedby">
     For <a href="${last_1m}">last month</a>,
     <a href="${last_12m}">last year</a>, or
     <a href="${last_all}">all time</a>
-</div>
+  </div>
 
-<h1>Statistics - Wiki</h1>
+  <h1>${_("Statistics - Wiki")}</h1>
 
-<table>
-<py:if test="author">
-<tr><td width="150">Author</td><td align="right">${author}</td></tr>
-</py:if>
-<tr><td width="150">First edit</td><td align="right">${mintime}</td></tr>
-<tr><td width="150">Last edit</td><td align="right">${maxtime}</td></tr>
-<tr><td width="150">Wiki age</td><td align="right">${age}</td></tr>
-<tr><td width="150">Editors</td><td align="right">${editors}</td></tr>
-<tr><td width="150">Edits</td><td align="right">${edits}</td></tr>
-<tr><td width="150">Edits-per-year</td><td align="right">${peryear}</td></tr>
-<tr><td width="150">Edits-per-month</td><td align="right">${permonth}</td></tr>
-<tr><td width="150">Edits-per-day</td><td align="right">${perday}</td></tr>
-<tr><td width="150">Edits-per-hour</td><td align="right">${perhour}</td></tr>
-</table>
+  <table>
+    # if author:
+    <tr><td width="150">${_("Author")}</td><td align="right">${author}</td></tr>
+    # endif
+    <tr><td width="150">${_("First edit")}</td><td align="right">${mintime}</td></tr>
+    <tr><td width="150">${_("Last edit")}</td><td align="right">${maxtime}</td></tr>
+    <tr><td width="150">${_("Wiki age")}</td><td align="right">${age}</td></tr>
+    <tr><td width="150">${_("Editors")}</td><td align="right">${editors}</td></tr>
+    <tr><td width="150">${_("Edits")}</td><td align="right">${edits}</td></tr>
+    <tr><td width="150">${_("Edits-per-year")}</td><td align="right">${peryear}</td></tr>
+    <tr><td width="150">${_("Edits-per-month")}</td><td align="right">${permonth}</td></tr>
+    <tr><td width="150">${_("Edits-per-day")}</td><td align="right">${perday}</td></tr>
+    <tr><td width="150">${_("Edits-per-hour")}</td><td align="right">${perhour}</td></tr>
+  </table>
 
-<py:if test="history">
-<br />
-
-<h2>Total Pages</h2>
-
-<div id="totalpages" style="width:600px;height:300px;"></div>
-
-<script language="javascript" type="text/javascript">
-$(function () {
-
+  # if history:
+  <br />
+  <h2>${_("Total Pages")}</h2>
+  <div id="totalpages" style="width:600px;height:300px;"></div>
+  <script language="javascript" type="text/javascript">
+  $(function () {
     var options = {
         lines: { show: true, fill: true }, 
         xaxis: { mode: "time", timeformat: "%d %b %y" },
         colors: [ "#afd8f8" ],
     };
-
-    var d = [<py:for each="stat in history">[${stat.x}, ${stat.y}]<py:if 
-                     test="stat != history[-1]">,</py:if></py:for>];
-
+    var d = [{%for stat in history%}[${stat.x}, ${stat.y}]{%if not loop.last%},{%endif%}{%endfor%}];
     $.plot($("#totalpages"), [ d ], options);
-});
-</script>
-</py:if>
+  });
+  </script>
+  # endif
 
-<br />
+  <br />
+  <h2>${_("Edits by author")}</h2>
+  <table id="editsbyauthor" class="tablesorter">
+    <thead>
+      <tr>
+        <th>${_("Author")}</th>
+        <th>${_("Edits")}</th>
+        <th>${_("Pages")}</th>
+        <th>${_("Percent")}</th>
+      </tr>
+    </thead>
+    <tbody>
+      # for stat in byauthor:
+      <tr>
+        <td width="150"><a href="${stat.url}">${stat.name}</a></td>
+        <td width="100" align="right">${stat.count}</td>
+        <td width="100" align="right">${stat.pages}</td>
+        <td width="100" align="right">${stat.percent}%</td>
+      </tr>
+      # endfor
+    </tbody>
+  </table>
 
-<h2>Edits by author</h2>
+  <script language="javascript" type="text/javascript">
+  $(document).ready(function() {
+    $("#editsbyauthor").tablesorter( {sortList: [[1,1]]} );
+  });
+  </script>
 
-<table id="editsbyauthor" class="tablesorter">
-<thead>
-<tr>
-    <th>Author</th>
-    <th>Edits</th>
-    <th>Pages</th>
-    <th>Percent</th>
-</tr>
-</thead>
-<tbody>
-<py:for each="stat in byauthor">
-<tr>
-    <td width="150"><a href="${stat.url}">${stat.name}</a></td>
-    <td width="100" align="right">${stat.count}</td>
-    <td width="100" align="right">${stat.pages}</td>
-    <td width="100" align="right">${stat.percent}%</td>
-</tr>
-</py:for>
-</tbody>
-</table>
+  <br />
+  <h2>${_("Latest wiki pages changed")}</h2>
+  <table>
+    # for stat in recent:
+    <tr>
+      <td width="200"><a href="${stat.url}">${stat.name}</a></td>
+      <td width="150"><a href="${stat.url2}">${stat.author}</a></td>
+      <td width="100" align="right">${stat.time}</td>
+    </tr>
+    # endfor
+  </table>
 
-<script language="javascript" type="text/javascript">
-$(document).ready(function()
-    {
-        $("#editsbyauthor").tablesorter( {sortList: [[1,1]]} );
-    }
-);
-</script>
+  <br />
+  <h2>${_("Most active wiki pages")}</h2>
+  <table>
+    # for stat in pages:
+    <tr>
+      <td width="200"><a href="${stat.url}">${stat.name}</a></td>
+      <td width="75" align="right">${stat.count}</td>
+      <td width="75" align="right">${stat.percent}%</td>
+    </tr>
+    # endfor
+  </table>
 
-<br />
+  <br />
+  <h2>${_("Largest wiki pages")}</h2>
+  <table>
+    # for stat in largest:
+    <tr>
+      <td width="200"><a href="${stat.url}">${stat.name}</a></td>
+      <td width="150" align="right">${stat.size}</td>
+    </tr>
+    # endfor
+  </table>
 
-<h2>Latest wiki pages changed</h2>
-
-<table>
-<py:for each="stat in recent">
-<tr>
-    <td width="200"><a href="${stat.url}">${stat.name}</a></td>
-    <td width="150"><a href="${stat.url2}">${stat.author}</a></td>
-    <td width="100" align="right">${stat.time}</td>
-</tr>
-</py:for>
-</table>
-
-<br />
-
-<h2>Most active wiki pages</h2>
-
-<table>
-<py:for each="stat in pages">
-<tr>
-    <td width="200"><a href="${stat.url}">${stat.name}</a></td>
-    <td width="75" align="right">${stat.count}</td>
-    <td width="75" align="right">${stat.percent}%</td>
-</tr>
-</py:for>
-</table>
-
-<br />
-
-<h2>Largest wiki pages</h2>
-
-<table>
-<py:for each="stat in largest">
-<tr>
-    <td width="200"><a href="${stat.url}">${stat.name}</a></td>
-    <td width="150" align="right">${stat.size}</td>
-</tr>
-</py:for>
-</table>
-
-<br />
-
-</div>
-
+  </div>
+#endblock content
 </body>
 </html>

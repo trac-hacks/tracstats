@@ -1,100 +1,101 @@
-<!DOCTYPE html
-    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:py="http://genshi.edgewall.org/"
-      xmlns:i18n="http://genshi.edgewall.org/i18n"
-      xmlns:xi="http://www.w3.org/2001/XInclude">
-  <xi:include href="layout.html" />
+{# Copyright (C) 2023 Dirk Stöcker
+
+  This software is licensed as described in the file COPYING, which
+  you should have received as part of this distribution. The terms
+  are also available at https://trac.edgewall.org/wiki/TracLicense.
+
+  This software consists of voluntary contributions made by many
+  individuals. For the exact contribution history, see the revision
+  history and logs, available at https://trac.edgewall.org/.
+#}
+# extends 'layout.html'
+<html>
   <head>
-      <title>Stats <py:if test="author">(${author})</py:if></title>
+    <title>
+    # block title
+      # if author:
+      ${_("Stats (%(author)s)" % {'author' : author})}
+      # else:
+      ${_("Stats")}
+      # endif
+    # endblock title
+    </title>
   </head>
-
 <body>
+# block content
+  <div id="content" class="wiki">
 
-<div id="content" class="wiki">
+  <h1>${_("Statistics")}</h1>
 
-<h1>Statistics</h1>
+  <table cellpadding="10">
+    <tr>
+      <td colspan="2" align="center">
+        <span id="weeks">${_("Loading...")}</span><br />
+        <img src="${req.href.chrome('stats/legend.png')}" />
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle">
+        <img src="${req.href.chrome('stats/code.png')}" align="center" valign="middle" /> <a href="${req.href.stats('code')}">${_("Code")}</a><br /><br />
+        <img src="${req.href.chrome('stats/wiki.png')}" align="center" valign="middle" /> <a href="${req.href.stats('wiki')}">${_("Wiki")}</a><br /><br />
+        <img src="${req.href.chrome('stats/tickets.png')}" align="center" valign="middle" /> <a href="${req.href.stats('tickets')}">${_("Tickets")}</a>
+      </td>
+      <td valign="middle" style="border-left: 1px lightgray solid;">
+        <b>${years}</b> <font color="gray">years,</font>
+        <b>${days}</b> <font color="gray">days,</font>
+        <b>${hours}</b> <font color="gray">hours of development</font>
+        <br /><br />
+        <b>${authors}</b> <font color="gray">authors,</font>
+        <b>${revisions}</b> <font color="gray">revisions,</font>
+        <br /><br />
+        <b>${pages}</b> <font color="gray">wiki pages, and</font>
+        <br /><br />
+        <b>${tickets}</b> <font color="gray">tickets</font>
+      </td>
+    </tr>
+  </table>
 
-<table cellpadding="10">
-<tr><td colspan="2" align="center">
-<span id="weeks">Loading...</span><br />
-<img src="${req.href.chrome('stats/legend.png')}" />
-</td></tr>
-<tr><td valign="middle">
-<img src="${req.href.chrome('stats/code.png')}" align="center" valign="middle" /> <a href="${req.href.stats('code')}">Code</a><br /><br />
-<img src="${req.href.chrome('stats/wiki.png')}" align="center" valign="middle" /> <a href="${req.href.stats('wiki')}">Wiki</a><br /><br />
-<img src="${req.href.chrome('stats/tickets.png')}" align="center" valign="middle" /> <a href="${req.href.stats('tickets')}">Tickets</a>
-</td><td valign="middle" style="border-left: 1px lightgray solid;">
-<b>${years}</b> <font color="gray">years,</font>
-<b>${days}</b> <font color="gray">days,</font>
-<b>${hours}</b> <font color="gray">hours of development</font>
-<br /><br />
-<b>${authors}</b> <font color="gray">authors,</font>
-<b>${revisions}</b> <font color="gray">revisions,</font>
-<br /><br />
-<b>${pages}</b> <font color="gray">wiki pages, and</font>
-<br /><br />
-<b>${tickets}</b> <font color="gray">tickets</font>
-</td></tr>
-</table>
+  <script language="javascript" type="text/javascript">
+  $(document).ready(function() {
+    var values = [${weeks|map(attribute='total')|join(',')}];
+    $("#weeks").sparkline(values, { type: "bar", barColor: "lightgray", barWidth: 7, });
+  });
+  </script>
 
-<script language="javascript" type="text/javascript">
-$(document).ready(function()
-    {
-        var values = [<py:for each="week in weeks">${week.total}<py:if
-                              test="week != weeks[-1]">,</py:if></py:for>];
-        $("#weeks").sparkline(values, {
-                                        type: "bar",
-                                        barColor: "lightgray",
-                                        barWidth: 7,
-                                      });
-    }
-);
-</script>
-
-<table style="padding: 10px;">
-<tr>
-<td colspan="3">
-    <p><i>Recent activity (within last 30 days):</i></p>
-</td>
-</tr>
-<tr>
-    <td><b>Developers</b></td>
-    <td><b>Projects</b></td>
-    <td><b>Paths</b></td>
-</tr>
-<tr>
-
-<td width="150" valign="top">
-<ol>
-<py:for each="stat in byauthors">
-<li><a href="${stat.url}">${stat.name}</a></li>
-</py:for>
-</ol>
-</td>
-
-<td width="150" valign="top">
-<ol>
-<py:for each="stat in byproject">
-<li><a href="${stat.url}">${stat.name}</a></li>
-</py:for>
-</ol>
-</td>
-
-<td width="300" valign="top">
-<ol>
-<py:for each="stat in bypaths">
-<li><a href="${stat.url}">${stat.name}</a></li>
-</py:for>
-</ol>
-</td>
-
-</tr>
-</table>
-
-</div>
-
+  <table id="recent" style="padding: 10px;">
+    <tr id="recenttitle">
+      <td colspan="3"> <p><i>${_("Recent activity (within last 30 days):")}</i></p></td>
+    </tr>
+    <tr>
+      <th><b>${_("Developers")}</b></th>
+      <th><b>${_("Projects")}</b></th>
+      <th><b>${_("Paths")}</b></th>
+    </tr>
+    <tr>
+      <td width="150" valign="top">
+        <ol>
+          # for stat in byauthors:
+          <li><a href="${stat.url}">${stat.name}</a></li>
+          # endfor
+        </ol>
+      </td>
+      <td width="150" valign="top">
+        <ol>
+          # for stat in byproject:
+          <li><a href="${stat.url}">${stat.name}</a></li>
+          # endfor
+        </ol>
+      </td>
+      <td width="300" valign="top">
+        <ol>
+          # for stat in bypaths:
+          <li><a href="${stat.url}">${stat.name}</a></li>
+          # endfor
+        </ol>
+      </td>
+    </tr>
+  </table>
+  </div>
+# endblock content
 </body>
 </html>
-

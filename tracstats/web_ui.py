@@ -9,7 +9,6 @@ from math import floor, log
 from operator import itemgetter
 
 # trac imports
-import trac
 from trac.core import *
 from trac.mimeview import Mimeview
 from trac.perm import IPermissionRequestor
@@ -20,43 +19,6 @@ from trac.web import IRequestHandler
 from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.web.chrome import add_ctxtnav, add_stylesheet, add_script
 from trac.versioncontrol.api import RepositoryManager
-
-
-# In version 0.12, the time field in the database was changed
-# from seconds to microseconds.  This allows us to support both
-# 0.11 and 0.12 with the same piece of code.  It could be prettier.
-if trac.__version__ >= '0.12':
-    SECONDS = 'time / 1000000'
-else:
-    SECONDS = 'time'
-
-# In version 0.12, the database was changed to allow multiple
-# repositories.  Where the "rev" field was previously unique,
-# the "(repos,rev)" fields are now unique.  Doing it this way
-# is a big performance boost.
-if trac.__version__ >= '0.12':
-    USING = "on r.repos = nc.repos and r.rev = nc.rev"
-else:
-    USING = "using (rev)"
-
-# In version 0.12, support for multiple repositories was
-# added.  We use the reponame to generate proper changeset links.
-if trac.__version__ >= '0.12':
-    REPOS = 'r.repos'
-else:
-    REPOS = "'' as repos"
-
-# In version 1.0, support for a better database API was added.
-# This provides a backwards compatible way to perform queries
-# on older versions of Trac.
-@contextmanager
-def old_db_query(env):
-    db = env.get_db_cnx()
-    try:
-        yield db
-    finally:
-        db.close()
-
 
 class TracStatsPlugin(Component):
     implements(INavigationContributor, IPermissionRequestor, IRequestHandler, ITemplateProvider)
@@ -116,19 +78,19 @@ class TracStatsPlugin(Component):
                 months, = m.groups()
                 ago = (24 * 60 * 60 * 30 * int(months))
                 since = now - ago
-                where.append('%s > %s' % (SECONDS, since))
+                where.append('time / 1000000 > %s' % (since))
             elif w is not None:
                 now = time.time()
                 weeks, = w.groups()
                 ago = (24 * 60 * 60 * 7 * int(weeks))
                 since = now - ago
-                where.append('%s > %s' % (SECONDS, since))
+                where.append('time / 1000000 > %s' % (since))
             elif d is not None:
                 now = time.time()
                 days, = d.groups()
                 ago = (24 * 60 * 60 * int(days))
                 since = now - ago
-                where.append('%s > %s' % (SECONDS, since))
+                where.append('time / 1000000 > %s' % (since))
         if where:
             where = 'where ' + ' and '.join(where)
         else:
@@ -165,11 +127,7 @@ class TracStatsPlugin(Component):
         add_ctxtnav(req, 'Wiki', req.href.stats('wiki'))
         add_ctxtnav(req, 'Tickets', req.href.stats('tickets'))
 
-        if hasattr(self.env, 'db_query'):
-            db_query = self.env.db_query
-        else:
-            db_query = old_db_query(self.env)
-        with db_query as db:
+        with self.env.db_query as db:
             cursor = db.cursor()
 
             if path == '/':
@@ -192,14 +150,14 @@ class TracStatsPlugin(Component):
                 raise ValueError("unknown path '%s'" % path)
 
         # Clean the unicode values for Genshi
-        template_name, data, content_type = result
+        template_name, data = result
         new_data = {}
         for k, v in data.items():
             if isinstance(v, str):
                 new_data[k] = to_unicode(v)
             else:
                 new_data[k] = v
-        return template_name, new_data, content_type
+        return template_name, new_data, {'domain': 'tracstats'}
 
 
     def _process(self, req, cursor, where, data):
@@ -212,18 +170,18 @@ class TracStatsPlugin(Component):
             cursor.execute("""
             select count(distinct r.author),
                    count(distinct r.rev),
-                   min(%s), max(%s)
+                   min(time / 1000000), max(time / 1000000)
             from node_change nc
-            join revision r %s
+            join revision r on r.repos = nc.repos and r.rev = nc.rev
             where nc.path like '%s%%'
-            """ % (SECONDS, SECONDS, USING, root))
+            """ % (root))
         else:
             cursor.execute("""
             select count(distinct author),
                    count(distinct rev),
-                   min(%s), max(%s)
+                   min(time / 1000000), max(time / 1000000)
             from revision
-            """ % (SECONDS, SECONDS))
+            """)
         authors, revisions, mintime, maxtime = cursor.fetchall()[0]
 
         cursor.execute("select count(distinct name) from wiki")
@@ -250,11 +208,11 @@ class TracStatsPlugin(Component):
         data['hours'] = hours
 
         if self.db_type == 'sqlite':
-            strftime = "strftime('%%Y-%%W', %s, 'unixepoch')" % SECONDS
+            strftime = "strftime('%%Y-%%W', time / 1000000, 'unixepoch')"
         elif self.db_type == 'mysql':
-            strftime = "date_format(from_unixtime(%s), '%%Y-%%u')" % SECONDS
+            strftime = "date_format(from_unixtime(time / 1000000), '%%Y-%%u')"
         elif self.db_type == 'postgres':
-            strftime = "to_char(to_timestamp(%s), 'YYYY-IW')" % SECONDS # FIXME: Not %Y-%W
+            strftime = "to_char(to_timestamp(time / 1000000), 'YYYY-IW')" # FIXME: Not %Y-%W
         else:
             assert False
 
@@ -265,21 +223,21 @@ class TracStatsPlugin(Component):
             select %s,
                    count(*)
             from node_change nc
-            join revision r %s
+            join revision r on r.repos = nc.repos and r.rev = nc.rev
             where nc.path like '%s%%'
-              and r.%s > %d
+              and r.time / 1000000 > %d
             group by 1
             order by 1
-            """ % (strftime, USING, root, SECONDS, start))
+            """ % (strftime, root, start))
         else:
             cursor.execute("""
             select %s,
                    count(*)
             from revision
-            where %s > %d
+            where time / 1000000 > %d
             group by 1 
             order by 1
-            """ % (strftime, SECONDS, start))
+            """ % (strftime, start))
         rows = cursor.fetchall()
 
         d = dict(rows)
@@ -295,16 +253,11 @@ class TracStatsPlugin(Component):
                 week = 52
         data['weeks'] = list(reversed(stats))
 
-        # In version 0.12, support for multiple repositories was
-        # added.  We use the reponame to generate proper changeset links.
-        if trac.__version__ > '0.12':
-            cursor.execute("""
-            select id, value
-            from repository
-            where name = 'name'""")
-            repositories = dict(cursor.fetchall())
-        else:
-            repositories = {}
+        cursor.execute("""
+        select id, value
+        from repository
+        where name = 'name'""")
+        repositories = dict(cursor.fetchall())
 
         now = time.time()
         start = now - (30 * 24 * 60 * 60)
@@ -312,22 +265,22 @@ class TracStatsPlugin(Component):
             cursor.execute("""
             select author, count(*)
             from node_change nc
-            join revision r %s
+            join revision r on r.repos = nc.repos and r.rev = nc.rev
             where nc.path like '%s%%'
-              and r.%s > %d
+              and r.time / 1000000 > %d
             group by 1
             order by 2 desc
             limit 10
-            """ % (USING, root, SECONDS, start))
+            """ % (root, start))
         else:
             cursor.execute("""
             select author, count(*)
             from revision
-            where %s > %d
+            where time / 1000000 > %d
             group by 1
             order by 2 desc
             limit 10
-            """ % (SECONDS, start))
+            """ % (start))
         rows = cursor.fetchall()
 
         stats = []
@@ -338,19 +291,19 @@ class TracStatsPlugin(Component):
 
         if root:
             cursor.execute("""
-            select %s, nc.path
+            select r.repos, nc.path
             from node_change nc
-            join revision r %s
+            join revision r on r.repos = nc.repos and r.rev = nc.rev
             where nc.path like '%s%%'
-              and r.%s > %d
-            """ % (REPOS, USING, root, SECONDS, start))
+              and r.time / 1000000 > %d
+            """ % (root, start))
         else:
             cursor.execute("""
-            select %s, nc.path
+            select r.repos, nc.path
             from node_change nc
-            join revision r %s
-            where %s > %d
-            """ % (REPOS, USING, SECONDS, start))
+            join revision r on r.repos = nc.repos and r.rev = nc.rev
+            where time / 1000000 > %d
+            """ % (start))
         rows = cursor.fetchall()
 
         d = {}
@@ -396,7 +349,7 @@ class TracStatsPlugin(Component):
                           'url': req.href.log(reponame, root + k[1]),})
         data['byproject'] = stats
 
-        return 'stats.html', data, None
+        return 'stats.html', data
 
     def _process_code(self, req, cursor, where, data):
 
@@ -408,7 +361,7 @@ class TracStatsPlugin(Component):
 
         if project:
             cursor.execute("""
-            select rev, %s, author, message, %s
+            select rev, time / 1000000, author, message, r.repos
             from revision r
             join (
                select rev
@@ -416,20 +369,20 @@ class TracStatsPlugin(Component):
                where path like '%s%%'
                group by rev
             ) changes using (rev)
-            """ % (SECONDS, REPOS, project) + where + " order by 2")
+            """ % (project) + where + " order by 2")
         else:
             cursor.execute("""
-            select rev, %s, author, message, %s
+            select rev, time / 1000000, author, message, r.repos
             from revision r
-            """ % (SECONDS, REPOS) + where + " order by 2")
+            """ + where + " order by 2")
         revisions = cursor.fetchall()
 
         if project:
             query = """
-            select nc.rev, %s, nc.path, nc.change_type, r.author
+            select nc.rev, r.repos, nc.path, nc.change_type, r.author
             from node_change nc
-            join revision r %s
-            """ % (REPOS, USING) + where
+            join revision r on r.repos = nc.repos and r.rev = nc.rev
+            """ + where
             if where:
                 query += " and nc.path like '%s%%'" % project
             else:
@@ -437,22 +390,17 @@ class TracStatsPlugin(Component):
             cursor.execute(query)
         else:
             cursor.execute("""
-            select nc.rev, %s, nc.path, nc.change_type, r.author
+            select nc.rev, r.repos, nc.path, nc.change_type, r.author
             from node_change nc
-            join revision r %s
-            """ % (REPOS, USING) + where)
+            join revision r on r.repos = nc.repos and r.rev = nc.rev
+            """ + where)
         changes = cursor.fetchall()
 
-        # In version 0.12, support for multiple repositories was
-        # added.  We use the reponame to generate proper changeset links.
-        if trac.__version__ > '0.12':
-            cursor.execute("""
-            select id, value
-            from repository
-            where name = 'name'""")
-            repositories = dict(cursor.fetchall())
-        else:
-            repositories = {}
+        cursor.execute("""
+        select id, value
+        from repository
+        where name = 'name'""")
+        repositories = dict(cursor.fetchall())
 
         if revisions:
             head = revisions[0]
@@ -509,11 +457,11 @@ class TracStatsPlugin(Component):
             data['changes'] = 'N/A'
 
         if self.db_type == 'sqlite':
-            strftime = "strftime('%%Y-%%W', %s, 'unixepoch')" % SECONDS
+            strftime = "strftime('%%Y-%%W', time / 1000000, 'unixepoch')"
         elif self.db_type == 'mysql':
-            strftime = "date_format(from_unixtime(%s), '%%Y-%%u')" % SECONDS
+            strftime = "date_format(from_unixtime(time / 1000000), '%%Y-%%u')"
         elif self.db_type == 'postgres':
-            strftime = "to_char(to_timestamp(%s), 'YYYY-IW')" % SECONDS # FIXME: Not %Y-%W
+            strftime = "to_char(to_timestamp(time / 1000000), 'YYYY-IW')" # FIXME: Not %Y-%W
         else:
             assert False
 
@@ -585,7 +533,7 @@ class TracStatsPlugin(Component):
                     total.remove(path)
                 d[int(times[rev] * 1000)] = len(total)
             stats = []
-            steps = max(len(d) / 50, 1)
+            steps = max(len(d) // 50, 1)
             for k, v in sorted(iter(d.items()), key=itemgetter(0))[::steps]:
                 stats.append({'x': k, 
                               'y': v,})
@@ -597,7 +545,7 @@ class TracStatsPlugin(Component):
             total += 1
             d[int(t * 1000)] = total
         stats = []
-        steps = max(len(d) / 50, 1)
+        steps = max(len(d) // 50, 1)
         for k, v in sorted(iter(d.items()), key=itemgetter(0))[::steps]:
             stats.append({'x': k, 
                           'y': v,})
@@ -610,7 +558,7 @@ class TracStatsPlugin(Component):
             total += 1
             d[int(times[rev] * 1000)] = total
         stats = []
-        steps = max(len(d) / 50, 1)
+        steps = max(len(d) // 50, 1)
         for k, v in sorted(iter(d.items()), key=itemgetter(0))[::steps]:
             stats.append({'x': k, 
                           'y': v,})
@@ -817,17 +765,16 @@ class TracStatsPlugin(Component):
                            'size': fonts[index]})
         data['cloud'] = stats
 
-        return 'code.html', data, None
+        return 'code.html', data
 
 
     def _process_wiki(self, req, cursor, where, since, data):
 
         cursor.execute("""
-        select min(%s),
-               max(%s),
+        select min(time / 1000000),
+               max(time / 1000000),
                count(*),
-               count(distinct author) """ % (SECONDS, SECONDS) + """
-        from wiki """ + where)
+               count(distinct author) from wiki """ + where)
         mintime, maxtime, edits, editors = cursor.fetchall()[0]
 
         data['editors'] = editors
@@ -882,10 +829,10 @@ class TracStatsPlugin(Component):
                           'percent': '%.2f' % (100 * v[0] / total)})
         data['byauthor'] = stats
 
-        __where = where.replace('where %s > %s' % (SECONDS, since), '')
-        __where = __where.replace('and %s > %s' % (SECONDS, since), '')
+        __where = where.replace('where time / 1000000 > %s' % (since), '')
+        __where = __where.replace('and time / 1000000 > %s' % (since), '')
         cursor.execute("""
-        select name, %s """ % SECONDS + """
+        select name, time / 1000000
         from wiki """ + __where + """
         order by 2 asc
         """)
@@ -897,9 +844,9 @@ class TracStatsPlugin(Component):
             total = set()
             for name, t in history:
                 total.add(name)
-                d[int(t)] = len(total)
+                d[int(t) if t else 0] = len(total)
             stats = []
-            steps = max(len(d) / 250, 1)
+            steps = max(len(d) // 250, 1)
             for k, v in sorted(iter(d.items()), key=itemgetter(0))[::steps]:
                 if k > since:
                     stats.append({'x': k * 1000, 
@@ -939,7 +886,7 @@ class TracStatsPlugin(Component):
         data['largest'] = stats
 
         cursor.execute("""
-        select name, version, author, %s """ % SECONDS + """
+        select name, version, author, time / 1000000
         from wiki """ + where + """
         order by 4 desc
         limit 10
@@ -955,17 +902,17 @@ class TracStatsPlugin(Component):
 
         data['recent'] = stats
 
-        return 'wiki.html', data, None
+        return 'wiki.html', data
 
 
     def _process_tickets(self, req, cursor, where, since, data):
 
         cursor.execute("""
         select
-            min(%s),
-            max(%s),
+            min(time / 1000000),
+            max(time / 1000000),
             count(*),
-            count(distinct reporter) """ % (SECONDS, SECONDS) + """
+            count(distinct reporter)
         from ticket """ + where.replace('author', 'reporter'))
         mintime, maxtime, tickets, reporters = cursor.fetchall()[0]
 
@@ -1069,14 +1016,14 @@ class TracStatsPlugin(Component):
 
         stats = []
         if not req.args.get('author', ''):
-            __where = where.replace('where %s > %s' % (SECONDS, since), '')
-            __where = __where.replace('and %s > %s' % (SECONDS, since), '')
+            __where = where.replace('where time / 1000000 > %s' % (since), '')
+            __where = __where.replace('and time / 1000000 > %s' % (since), '')
             cursor.execute("""\
-            select id, %s, 'none' as oldvalue, 'new' as newvalue
-            from ticket """ % SECONDS + __where + """
+            select id, time / 1000000, 'none' as oldvalue, 'new' as newvalue
+            from ticket """ + __where + """
             union
-            select ticket, %s, oldvalue, newvalue
-            from ticket_change where field = 'status' """  % SECONDS +
+            select ticket, time / 1000000, oldvalue, newvalue
+            from ticket_change where field = 'status' """  +
                             __where.replace('where', 'and'))
             rows = cursor.fetchall()
             d = {}
@@ -1092,7 +1039,7 @@ class TracStatsPlugin(Component):
                 elif newvalue == "closed" and oldvalue != "closed":
                     opened -= 1
                 d[int(t)] = (opened, accepted)
-            steps = max(len(d) / 250, 1)
+            steps = max(len(d) // 250, 1)
             for k, v in sorted(iter(d.items()), key=itemgetter(0))[::steps]:
                 if k > since:
                     stats.append({'x': k * 1000,
@@ -1122,9 +1069,9 @@ class TracStatsPlugin(Component):
         data['active'] = stats
 
         cursor.execute("""
-        select id, component, summary, %s
+        select id, component, summary, time / 1000000
         from ticket
-        where status != 'closed' """ % SECONDS + 
+        where status != 'closed' """ + 
                        where.replace('where',
                                      'and').replace('author',
                                                     'reporter') + """
@@ -1143,8 +1090,8 @@ class TracStatsPlugin(Component):
         data['oldest'] = stats
 
         cursor.execute("""
-        select id, component, summary, %s
-        from ticket """ % SECONDS + where.replace('author', 'reporter') + """
+        select id, component, summary, time / 1000000
+        from ticket """ + where.replace('author', 'reporter') + """
         order by 4 desc
         limit 10
         """)
@@ -1160,9 +1107,9 @@ class TracStatsPlugin(Component):
         data['newest'] = stats
 
         cursor.execute("""
-        select tc.ticket, t.component, t.summary, tc.%s
+        select tc.ticket, t.component, t.summary, tc.time / 1000000
         from ticket_change tc
-        join ticket t on t.id = tc.ticket """ % SECONDS +
+        join ticket t on t.id = tc.ticket """ +
                        where.replace('where', 'and').replace('time', 'tc.time') + """
         order by 4 desc
         limit 10
@@ -1179,7 +1126,7 @@ class TracStatsPlugin(Component):
 
         data['recent'] = stats
 
-        return 'tickets.html', data, None
+        return 'tickets.html', data
 
 
 stopwords = set('''
@@ -1241,5 +1188,3 @@ revise revised revising
 update updated updates updating
 use used using 
 '''.split())
-
-

@@ -1,4 +1,4 @@
-#!/usr/bin/env make
+#!/usr/bin/make
 #
 # Makefile for building tracstats.
 #
@@ -6,13 +6,13 @@
 all: clean build
 
 build:
-	python setup.py build
+	python3 setup.py build
 
 dist:
-	python setup.py bdist_egg
+	python3 setup.py bdist_egg
 
 install:
-	python setup.py install
+	python3 setup.py install
 	/etc/init.d/httpd restart
 
 clean:
