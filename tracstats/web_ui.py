@@ -239,7 +239,6 @@ class TracStatsPlugin(Component):
             order by 1
             """ % (strftime, start))
         rows = cursor.fetchall()
-        self.log.warn(rows)
 
         d = dict(rows)
         year, week = list(map(int, time.strftime('%Y %W').split()))
@@ -253,7 +252,6 @@ class TracStatsPlugin(Component):
                 year -= 1
                 week = 52
         data['weeks'] = list(reversed(stats))
-        self.log.warn(data['weeks'])
 
         cursor.execute("""
         select id, value
