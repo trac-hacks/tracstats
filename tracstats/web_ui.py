@@ -208,9 +208,9 @@ class TracStatsPlugin(Component):
         data['hours'] = hours
 
         if self.db_type == 'sqlite':
-            strftime = "strftime('%%Y-%%W', time / 1000000, 'unixepoch')"
+            strftime = "strftime('%Y-%W', time / 1000000, 'unixepoch')"
         elif self.db_type == 'mysql':
-            strftime = "date_format(from_unixtime(time / 1000000), '%%Y-%%u')"
+            strftime = "date_format(from_unixtime(time / 1000000), '%Y-%u')"
         elif self.db_type == 'postgres':
             strftime = "to_char(to_timestamp(time / 1000000), 'YYYY-IW')" # FIXME: Not %Y-%W
         else:
@@ -239,6 +239,7 @@ class TracStatsPlugin(Component):
             order by 1
             """ % (strftime, start))
         rows = cursor.fetchall()
+        self.log.warn(rows)
 
         d = dict(rows)
         year, week = list(map(int, time.strftime('%Y %W').split()))
@@ -252,6 +253,7 @@ class TracStatsPlugin(Component):
                 year -= 1
                 week = 52
         data['weeks'] = list(reversed(stats))
+        self.log.warn(data['weeks'])
 
         cursor.execute("""
         select id, value
@@ -457,9 +459,9 @@ class TracStatsPlugin(Component):
             data['changes'] = 'N/A'
 
         if self.db_type == 'sqlite':
-            strftime = "strftime('%%Y-%%W', time / 1000000, 'unixepoch')"
+            strftime = "strftime('%Y-%W', time / 1000000, 'unixepoch')"
         elif self.db_type == 'mysql':
-            strftime = "date_format(from_unixtime(time / 1000000), '%%Y-%%u')"
+            strftime = "date_format(from_unixtime(time / 1000000), '%Y-%u')"
         elif self.db_type == 'postgres':
             strftime = "to_char(to_timestamp(time / 1000000), 'YYYY-IW')" # FIXME: Not %Y-%W
         else:
