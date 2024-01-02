@@ -9,7 +9,7 @@ def read(fname):
 
 setup(
     name = 'TracStats',
-    version = '0.7.0',
+    version = '0.7.1',
     description = "A Trac plugin for project statistics",
     long_description = read('README.md'),
     author = "John Benediktsson, Dirk Stöcker",

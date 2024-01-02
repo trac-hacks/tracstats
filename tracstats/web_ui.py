@@ -1029,22 +1029,32 @@ class TracStatsPlugin(Component):
             d = {}
             opened = 0
             accepted = 0
+            openeddelta = 0
+            closeddelta = 0
             for ticket, t, oldvalue, newvalue in sorted(rows, key=itemgetter(1)):
                 if newvalue == 'accepted' and oldvalue != 'accepted':
                     accepted += 1
                 elif newvalue != 'accepted' and oldvalue == 'accepted':
                     accepted -= 1
                 if newvalue in ("new", "reopened") and oldvalue not in ("new", "reopened"):
+                    openeddelta += 1
                     opened += 1
                 elif newvalue == "closed" and oldvalue != "closed":
                     opened -= 1
-                d[int(t)] = (opened, accepted)
+                    closeddelta += 1
+                d[int(t)] = (opened, accepted, openeddelta, closeddelta)
             steps = max(len(d) // 250, 1)
+            lastopeneddelta = 0
+            lastcloseddelta = 0
             for k, v in sorted(iter(d.items()), key=itemgetter(0))[::steps]:
                 if k > since:
                     stats.append({'x': k * 1000,
                                   'opened': v[0],
-                                  'accepted': v[1],})
+                                  'accepted': v[1],
+                                  'openeddelta': v[2]-lastopeneddelta,
+                                  'closeddelta': v[3]-lastcloseddelta})
+                lastopeneddelta = v[2]
+                lastcloseddelta = v[3]
         data['history'] = stats
 
         cursor.execute("""\

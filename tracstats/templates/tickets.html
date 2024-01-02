@@ -64,6 +64,20 @@
       $.plot($("#opentickets"), [ { data: d1, label: 'Open' }, { data: d2, label: 'Accepted' } ], options);
     });
   </script>
+  <div id="openclosetickets" style="width:600px;height:300px;"></div>
+  <script language="javascript" type="text/javascript">
+    $(function () {
+      var options = {
+        bars: { show: true },
+        xaxis: { mode: "time", timeformat: "%d %b %y" },
+        colors: [ "#4bcb4b", "#cb4b4b" ],
+        legend: { show: true, backgroundOpacity: 0, },
+      };
+      var d1 = [{%for stat in history%}[${stat.x},${stat.openeddelta+stat.closeddelta}]{%if not loop.first%}{%if not loop.last%},{%endif%}{%endif%}{%endfor%}];
+      var d2 = [{%for stat in history%}[${stat.x},${stat.openeddelta}]{%if not loop.first%}{%if not loop.last%},{%endif%}{%endif%}{%endfor%}];
+      $.plot($("#openclosetickets"), [ { data: d1, label: 'Closed' }, { data: d2, label: 'Opened' } ], options);
+    });
+  </script>
   # endif
 
   <br />
